@@ -1,6 +1,6 @@
 package org.apache.flink.connectors.e2e.kafka;
 
-import org.apache.flink.connectors.e2e.common.AbstractSourceSinkCombinedTest;
+import org.apache.flink.connectors.e2e.common.AbstractSourceSinkCombinedE2E;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.KafkaContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.util.Dataset;
@@ -9,7 +9,7 @@ import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import java.io.File;
 import java.nio.file.Paths;
 
-public class KafkaSourceSinkCombinedTest extends AbstractSourceSinkCombinedTest {
+public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 
 	private KafkaContainerizedExternalSystem kafka;
 	File sourceFile;
@@ -59,8 +59,21 @@ public class KafkaSourceSinkCombinedTest extends AbstractSourceSinkCombinedTest 
 
 	class KafkaSinkJob extends SinkJob {
 		@Override
-		public File getJarFile() {
-			return new File("/Users/renqs/Workspaces/flink-connector-testing-framework/flink-connectors-e2e-kafka/target/flink-connectors-e2e-kafka-0.1-SNAPSHOT.jar");
+		public File getJarFile() throws Exception {
+			// Search JAR file in target directory
+			String moduleName = new File(System.getProperty("user.dir")).getName();
+			File targetDir = new File(System.getProperty("user.dir"), "target");
+			File jobJar = null;
+			for (File file : targetDir.listFiles()) {
+				String filename = file.getName();
+				if (filename.startsWith(moduleName) && filename.endsWith(".jar")) {
+					jobJar = file;
+				}
+			}
+			if (jobJar == null) {
+				throw new Exception("Cannot find relative JAR file in the target directory. Make sure the maven project is built correctly.");
+			}
+			return jobJar;
 		}
 
 		@Override
@@ -83,8 +96,21 @@ public class KafkaSourceSinkCombinedTest extends AbstractSourceSinkCombinedTest 
 	class KafkaSourceJob extends SourceJob {
 
 		@Override
-		public File getJarFile() {
-			return new File("/Users/renqs/Workspaces/flink-connector-testing-framework/flink-connectors-e2e-kafka/target/flink-connectors-e2e-kafka-0.1-SNAPSHOT.jar");
+		public File getJarFile() throws Exception {
+			// Search JAR file in target directory
+			String moduleName = new File(System.getProperty("user.dir")).getName();
+			File targetDir = new File(System.getProperty("user.dir"), "target");
+			File jobJar = null;
+			for (File file : targetDir.listFiles()) {
+				String filename = file.getName();
+				if (filename.startsWith(moduleName) && filename.endsWith(".jar")) {
+					jobJar = file;
+				}
+			}
+			if (jobJar == null) {
+				throw new Exception("Cannot find relative JAR file in the target directory. Make sure the maven project is built correctly.");
+			}
+			return jobJar;
 		}
 
 		@Override

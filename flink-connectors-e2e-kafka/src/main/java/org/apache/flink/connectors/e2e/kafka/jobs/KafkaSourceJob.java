@@ -1,18 +1,9 @@
 package org.apache.flink.connectors.e2e.kafka.jobs;
 
-import org.apache.flink.api.common.serialization.SimpleStringEncoder;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig;
-import org.apache.flink.streaming.api.functions.sink.filesystem.PartFileInfo;
-import org.apache.flink.streaming.api.functions.sink.filesystem.RollingPolicy;
-import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
-import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
-import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Properties;
 
 public class KafkaSourceJob {
@@ -63,7 +53,7 @@ public class KafkaSourceJob {
 		File sinkFile;
 		BufferedWriter sinkBufferedWriter;
 
-		SimpleFileSink(String filePath) throws Exception {
+		SimpleFileSink(String filePath) {
 			this.filePath = filePath;
 		}
 

@@ -1,12 +1,11 @@
 package org.apache.flink.connectors.e2e.common.util;
 
 import org.apache.flink.api.common.JobID;
-import org.apache.flink.client.cli.CliFrontendParser;
+import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -28,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Flink cluster running on containers.
@@ -103,18 +105,11 @@ public class FlinkContainers extends ExternalResource {
 
 	// ---------------------------- Flink job controlling ---------------------------------
 
-	public void submitJob(FlinkJob job) throws Exception {
-		try {
-			Container.ExecResult result = copyAndSubmitJarJob(job.getJarFile(), job.getMainClassName(), job.getArguments());
-			LOG.info(result.getStdout());
-			LOG.info(result.getStderr());
-		} catch (Exception e) {
-			LOG.error("Failed when submitting job", e);
-			throw new Exception(e);
-		}
+	public JobID submitJob(FlinkJob job) throws Exception {
+		return copyAndSubmitJarJob(job.getJarFile(), job.getMainClassName(), job.getArguments());
 	}
 
-	public Container.ExecResult copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
+	public JobID copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
 		// Validate JAR file first
 		if (!jarFileOutside.exists()) {
 			throw new FileNotFoundException("JAR file '" + jarFileOutside.getAbsolutePath()  + "' does not exist");
@@ -131,7 +126,7 @@ public class FlinkContainers extends ExternalResource {
 		return submitJarJob(jarPathInside.toAbsolutePath().toString(), mainClass, args);
 	}
 
-	public Container.ExecResult submitJarJob(String jarPathInside, String mainClass, String[] args) throws Exception {
+	public JobID submitJarJob(String jarPathInside, String mainClass, String[] args) throws Exception {
 		try {
 			List<String> commandLine = new ArrayList<>();
 			commandLine.add("flink");
@@ -141,11 +136,51 @@ public class FlinkContainers extends ExternalResource {
 			commandLine.add(mainClass);
 			commandLine.add(jarPathInside);
 			commandLine.addAll(Arrays.asList(args));
-			LOG.info("Executing command in JM: {}", String.join(" ", commandLine));
-			return jobManager.execInContainer(commandLine.toArray(new String[0]));
+			LOG.debug("Executing command in JM: {}", String.join(" ", commandLine));
+			Container.ExecResult result = jobManager.execInContainer(commandLine.toArray(new String[0]));
+			if (result.getExitCode() != 0) {
+				LOG.error("Command \"flink run\" exited with code {}. \nSTDOUT: {}\nSTDERR: {}",
+						result.getExitCode(), result.getStdout(), result.getStderr());
+				throw new Exception("Command \"flink run\" exited with code " + result.getExitCode());
+			}
+			LOG.debug(result.getStdout());
+			return parseJobID(result.getStdout());
+
 		} catch (Exception e) {
 			LOG.error("Flink job submission failed", e);
 			throw new Exception(e);
+		}
+	}
+
+	public CompletableFuture<JobStatus> getJobStatus(JobID jobID) {
+		return client.getJobStatus(jobID);
+	}
+
+	public CompletableFuture<JobStatus> waitForJob(JobID jobID) {
+		return CompletableFuture.supplyAsync(
+			() -> {
+				JobStatus status = null;
+				try {
+					while (status == null || !status.isTerminalState()) {
+						status = getJobStatus(jobID).get();
+					}
+				} catch (Exception e) {
+					LOG.error("Get job status failed", e);
+					throw new CompletionException(e);
+				}
+				return status;
+			}
+		);
+	}
+
+	private JobID parseJobID(String stdoutString) throws Exception {
+		Pattern pattern = Pattern.compile("JobID ([a-f0-9]*)");
+		Matcher matcher = pattern.matcher(stdoutString);
+		if (matcher.find()) {
+			return JobID.fromHexString(matcher.group(1));
+		} else {
+			// TODO: Should specify a exception system and use a speciific exception here
+			throw new Exception("Cannot find JobID from the output of \"flink run\"");
 		}
 	}
 

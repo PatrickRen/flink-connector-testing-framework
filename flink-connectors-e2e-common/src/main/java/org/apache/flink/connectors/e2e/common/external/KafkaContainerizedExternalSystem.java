@@ -2,9 +2,7 @@ package org.apache.flink.connectors.e2e.common.external;
 
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.common.errors.TopicExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.KafkaContainer;
@@ -14,7 +12,7 @@ import java.util.Properties;
 
 public class KafkaContainerizedExternalSystem extends ContainerizedExternalSystem {
 
-	private Logger LOG = LoggerFactory.getLogger(KafkaContainerizedExternalSystem.class);
+	private static final Logger LOG = LoggerFactory.getLogger(KafkaContainerizedExternalSystem.class);
 	public KafkaContainer kafka;
 	public AdminClient kafkaAdminClient;
 
@@ -54,7 +52,7 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 
 	@Override
 	protected void after() {
-		kafka.stop();
 		kafkaAdminClient.close();
+		kafka.stop();
 	}
 }
