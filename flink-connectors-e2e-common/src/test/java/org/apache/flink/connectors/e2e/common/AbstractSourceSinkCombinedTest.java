@@ -1,7 +1,8 @@
 package org.apache.flink.connectors.e2e.common;
 
-import org.apache.flink.api.common.JobID;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
+import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.util.FlinkJob;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -9,8 +10,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.CompletableFuture;
 
 @Ignore
 public abstract class AbstractSourceSinkCombinedTest {
@@ -25,13 +24,19 @@ public abstract class AbstractSourceSinkCombinedTest {
 	@Rule
 	public ExternalSystem externalSystem = createExternalSystem();
 
-//	public abstract void setupExternalSystem();
-
+	// External system related
 	public abstract ExternalSystem createExternalSystem();
+
+	// Resources when running the test
+	public abstract void initResources() throws Exception;
+	public abstract void cleanupResources();
+
+	// Result validation
+	public abstract boolean validateResult() throws Exception;
+
+	// Flink jobs used when running the test
 	public abstract SinkJob getSinkJob();
 	public abstract SourceJob getSourceJob();
-	public abstract void initResources() throws Exception;
-	public abstract boolean validateResult() throws Exception;
 
 	@Test
 	public void testSourceSinkBasicFunctionality() throws Exception {
@@ -43,13 +48,10 @@ public abstract class AbstractSourceSinkCombinedTest {
 		initResources();
 
 		// Submit two Flink jobs
-		CompletableFuture<JobID> submitSinkJobResult = flink.submitJob(getSinkJob());
-		CompletableFuture<JobID> submitSourceJobResult = flink.submitJob(getSourceJob());
-
-		JobID sinkJobId = submitSinkJobResult.get();
-		System.out.println("Sink job " + sinkJobId + "submitted");
-		JobID sourceJobId = submitSourceJobResult.get();
-		System.out.println("Source job " + sourceJobId + "submitted");
+		flink.submitJob(getSinkJob());
+		System.out.println("Sink job submitted");
+		flink.submitJob(getSourceJob());
+		System.out.println("Source job submitted");
 
 		// Wait for Flink job result
 		System.out.println("Waiting for job...");
@@ -59,11 +61,7 @@ public abstract class AbstractSourceSinkCombinedTest {
 		Assert.assertTrue(validateResult());
 
 		// Cleanup
-		CompletableFuture<Void> cancelSinkJobResult = flink.cancelJob(sinkJobId);
-		CompletableFuture<Void> cancelSourceJobResult = flink.cancelJob(sourceJobId);
-		cancelSinkJobResult.get();
-		cancelSourceJobResult.get();
-
+		cleanupResources();
 	}
 
 	public abstract static class SinkJob extends FlinkJob {}

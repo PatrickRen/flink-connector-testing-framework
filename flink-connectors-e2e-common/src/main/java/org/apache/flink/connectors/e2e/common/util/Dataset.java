@@ -1,11 +1,15 @@
-package org.apache.flink.connectors.e2e.common;
+package org.apache.flink.connectors.e2e.common.util;
 
 import org.apache.commons.io.FileUtils;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.RandomAccessFile;
+import java.nio.Buffer;
 import java.util.Random;
 
 public class Dataset {
@@ -38,6 +42,28 @@ public class Dataset {
 				bw.write(alphaNumericString.charAt(random.nextInt(alphaNumericString.length())));
 			}
 			bw.newLine();
+		}
+		bw.close();
+		fw.close();
+	}
+
+	public static void appendMarkToFile(File file, String mark) throws Exception {
+		FileReader fr = new FileReader(file);
+		BufferedReader br = new BufferedReader(fr);
+		int character;
+		char lastChar = 0;
+		while ((character = br.read()) > 0) {
+			lastChar = (char)character;
+		}
+		br.close();
+		fr.close();
+
+		FileWriter fw = new FileWriter(file, true);
+		BufferedWriter bw = new BufferedWriter(fw);
+		if (!(lastChar == '\n')) {
+			bw.append("\n").append(mark);
+		} else {
+			bw.append(mark).append("\n");
 		}
 		bw.close();
 		fw.close();

@@ -1,35 +1,24 @@
 package org.apache.flink.connectors.e2e.kafka;
 
-import org.apache.flink.api.common.io.FilePathFilter;
-import org.apache.flink.api.common.serialization.SimpleStringEncoder;
-import org.apache.flink.api.common.serialization.SimpleStringSchema;
-import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
-import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.connectors.e2e.common.AbstractSourceSinkCombinedTest;
-import org.apache.flink.connectors.e2e.common.Dataset;
-import org.apache.flink.connectors.e2e.common.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.KafkaContainerizedExternalSystem;
-import org.apache.flink.core.fs.Path;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.filesystem.OutputFileConfig;
-import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
-import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.BasePathBucketAssigner;
-import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.OnCheckpointRollingPolicy;
-import org.apache.flink.streaming.api.functions.source.FileProcessingMode;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+import org.apache.flink.connectors.e2e.common.util.Dataset;
+import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.Properties;
 
 public class KafkaSourceSinkCombinedTest extends AbstractSourceSinkCombinedTest {
 
 	private KafkaContainerizedExternalSystem kafka;
 	File sourceFile;
 	File destFile;
+	public static final String INPUT_FILENAME = "random.txt";
+	public static final String OUTPUT_FILENAME = "output.txt";
+	public static final String TOPIC = "temp";
+	public static final String GROUP_ID = "kafka-e2e-test";
+	public static final String END_MARK = "END";
 
 	@Override
 	public ExternalSystem createExternalSystem() {
@@ -49,84 +38,69 @@ public class KafkaSourceSinkCombinedTest extends AbstractSourceSinkCombinedTest 
 
 	@Override
 	public void initResources() throws Exception {
-		sourceFile = new File(flink.getWorkspaceFolderOutside(), "random.txt");
+		// Prepare random files
+		sourceFile = new File(flink.getWorkspaceFolderOutside(), INPUT_FILENAME);
 		Dataset.writeRandomTextToFile(sourceFile, 100, 100);
-		destFile = Paths.get(flink.getWorkspaceFolderOutside().getAbsolutePath(), "bucket", "output-0-0.txt").toFile();
+		Dataset.appendMarkToFile(sourceFile, END_MARK);
+		destFile = Paths.get(flink.getWorkspaceFolderOutside().getAbsolutePath(), OUTPUT_FILENAME).toFile();
+
+		// Prepare Kafka topic
+		kafka.createTopic(TOPIC, 1, (short)1);
 	}
 
 	@Override
+	public void cleanupResources() {}
+
+	@Override
 	public boolean validateResult() throws Exception {
+		Dataset.appendMarkToFile(destFile, END_MARK);
 		return Dataset.isSame(sourceFile, destFile);
 	}
 
 	class KafkaSinkJob extends SinkJob {
-
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-		public KafkaSinkJob() {
-			env.enableCheckpointing(2000);
-			env.setParallelism(1);
-
-			File inputFile = new File(FlinkContainers.getWorkspaceDirInside(), "random.txt");
-			String inputFilePath = inputFile.getAbsolutePath();
-			TextInputFormat format = new TextInputFormat(new Path(inputFilePath));
-			format.setFilesFilter(FilePathFilter.createDefaultFilter());
-			format.setCharsetName("UTF-8");
-			DataStream<String> stream = env.readFile(
-					format,
-					inputFilePath,
-					FileProcessingMode.PROCESS_CONTINUOUSLY,
-					10,
-					BasicTypeInfo.STRING_TYPE_INFO
-			);
-
-			Properties kafkaProperties = new Properties();
-			kafkaProperties.setProperty("bootstrap.servers", kafka.getBootstrapServer());
-			kafkaProperties.setProperty("group.id", "source");
-			stream.addSink(new FlinkKafkaProducer<String>(
-					"source",
-					new SimpleStringSchema(),
-					kafkaProperties
-			));
+		@Override
+		public File getJarFile() {
+			return new File("/Users/renqs/Workspaces/flink-connector-testing-framework/flink-connectors-e2e-kafka/target/flink-connectors-e2e-kafka-0.1-SNAPSHOT.jar");
 		}
 
 		@Override
-		public StreamExecutionEnvironment getJobEnvironment() {
-			return env;
+		public String getMainClassName() {
+			return "org.apache.flink.connectors.e2e.kafka.jobs.KafkaSinkJob";
+		}
+
+		@Override
+		public String[] getArguments() {
+			return new String[]{
+					Paths.get(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), INPUT_FILENAME).toString(),
+					KafkaContainerizedExternalSystem.HOSTNAME + ":9092",
+					TOPIC,
+					GROUP_ID,
+					END_MARK
+			};
 		}
 	}
 
 	class KafkaSourceJob extends SourceJob {
 
-		public static final String OUTPUT_DIR = "output";
-
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-		public KafkaSourceJob() {
-			env.enableCheckpointing(2000);
-			env.setParallelism(1);
-			Properties kafkaProperties = new Properties();
-			kafkaProperties.setProperty("bootstrap.servers", kafka.getBootstrapServer());
-			kafkaProperties.setProperty("group.id", "source");
-			env.addSource(new FlinkKafkaConsumer<String>(
-					"sink",
-					new SimpleStringSchema(),
-					kafkaProperties
-			))
-			.addSink(StreamingFileSink
-					.forRowFormat(
-							new Path(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), OUTPUT_DIR),
-							new SimpleStringEncoder<String>("UTF-8")
-					)
-					.withBucketAssigner(new BasePathBucketAssigner<>())
-					.withOutputFileConfig(new OutputFileConfig("output", ".txt"))
-					.withRollingPolicy(OnCheckpointRollingPolicy.build())
-					.build());
+		@Override
+		public File getJarFile() {
+			return new File("/Users/renqs/Workspaces/flink-connector-testing-framework/flink-connectors-e2e-kafka/target/flink-connectors-e2e-kafka-0.1-SNAPSHOT.jar");
 		}
 
 		@Override
-		public StreamExecutionEnvironment getJobEnvironment() {
-			return env;
+		public String getMainClassName() {
+			return "org.apache.flink.connectors.e2e.kafka.jobs.KafkaSourceJob";
+		}
+
+		@Override
+		public String[] getArguments() {
+			return new String[]{
+					Paths.get(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), OUTPUT_FILENAME).toString(),
+					KafkaContainerizedExternalSystem.HOSTNAME + ":9092",
+					TOPIC,
+					GROUP_ID,
+					END_MARK
+			};
 		}
 	}
 }

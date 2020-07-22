@@ -1,6 +1,7 @@
-package org.apache.flink.connectors.e2e.common;
+package org.apache.flink.connectors.e2e.common.util;
 
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.client.cli.CliFrontendParser;
 import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
@@ -21,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,10 +56,10 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Get a builder of org.apache.flink.connectors.e2e.common.FlinkContainers
+	 * Get a builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers
 	 * @param appName Name of the cluster
 	 * @param numTaskManagers Number of task managers
-	 * @return Builder of org.apache.flink.connectors.e2e.common.FlinkContainers
+	 * @return Builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers
 	 */
 	public static Builder builder(String appName, int numTaskManagers) {
 		return new Builder(appName, numTaskManagers);
@@ -101,53 +103,46 @@ public class FlinkContainers extends ExternalResource {
 
 	// ---------------------------- Flink job controlling ---------------------------------
 
-	public CompletableFuture<JobID> submitJob(FlinkJob job) {
-		StreamExecutionEnvironment env = job.getJobEnvironment();
-		return client.submitJob(env.getStreamGraph(job.getJobName()).getJobGraph());
+	public void submitJob(FlinkJob job) throws Exception {
+		try {
+			Container.ExecResult result = copyAndSubmitJarJob(job.getJarFile(), job.getMainClassName(), job.getArguments());
+			LOG.info(result.getStdout());
+			LOG.info(result.getStderr());
+		} catch (Exception e) {
+			LOG.error("Failed when submitting job", e);
+			throw new Exception(e);
+		}
 	}
 
-	public CompletableFuture<Void> cancelJob(JobID jobid) {
-		return client.cancel(jobid).thenCompose(
-				acknowledge -> waitJobCancelling(jobid)
-		);
-	}
-
-	public CompletableFuture<Void> waitJobCancelling(JobID jobid) {
-		CompletableFuture<Void> result = new CompletableFuture<>();
-		CompletableFuture.runAsync(
-			() -> {
-				try {
-					while (!client.getJobStatus(jobid).get().isTerminalState()) {}
-					result.complete(null);
-				} catch (Exception e) {
-					result.completeExceptionally(e);
-				}
-			}
-		);
-		return result;
-	}
-
-	public Container.ExecResult copyAndSubmitJarJob(String jarPathOutside) throws Exception {
+	public Container.ExecResult copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
 		// Validate JAR file first
-		File jarFileOutside = new File(jarPathOutside);
 		if (!jarFileOutside.exists()) {
-			throw new FileNotFoundException("JAR file '" + jarPathOutside  + "' does not exist");
+			throw new FileNotFoundException("JAR file '" + jarFileOutside.getAbsolutePath()  + "' does not exist");
 		}
 
 		try {
 			// Copy jar into job manager first
-			jobManager.copyFileToContainer(MountableFile.forHostPath(jarPathOutside), jobDirInside.getAbsolutePath());
+			jobManager.copyFileToContainer(MountableFile.forHostPath(jarFileOutside.getAbsolutePath()), Paths.get(jobDirInside.getAbsolutePath(), jarFileOutside.getName()).toString());
 		} catch (Exception e) {
 			LOG.error("Failed to copy JAR file into job manager container", e);
 			throw new Exception(e);
 		}
 		Path jarPathInside = Paths.get(jobDirInside.getAbsolutePath(), jarFileOutside.getName());
-		return submitJarJob(jarPathInside.toAbsolutePath().toString());
+		return submitJarJob(jarPathInside.toAbsolutePath().toString(), mainClass, args);
 	}
 
-	public Container.ExecResult submitJarJob(String jarPathInside) throws Exception {
+	public Container.ExecResult submitJarJob(String jarPathInside, String mainClass, String[] args) throws Exception {
 		try {
-			return jobManager.execInContainer("flink", "run", jarPathInside);
+			List<String> commandLine = new ArrayList<>();
+			commandLine.add("flink");
+			commandLine.add("run");
+			commandLine.add("-d");
+			commandLine.add("-c");
+			commandLine.add(mainClass);
+			commandLine.add(jarPathInside);
+			commandLine.addAll(Arrays.asList(args));
+			LOG.info("Executing command in JM: {}", String.join(" ", commandLine));
+			return jobManager.execInContainer(commandLine.toArray(new String[0]));
 		} catch (Exception e) {
 			LOG.error("Flink job submission failed", e);
 			throw new Exception(e);
@@ -203,7 +198,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Builder of org.apache.flink.connectors.e2e.common.FlinkContainers.
+	 * Builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers.
 	 */
 	public static final class Builder {
 
