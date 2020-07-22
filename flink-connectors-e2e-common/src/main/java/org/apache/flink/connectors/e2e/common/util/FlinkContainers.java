@@ -41,8 +41,14 @@ public class FlinkContainers extends ExternalResource {
 	private final GenericContainer<?> jobManager;
 	private final List<GenericContainer<?>> taskManagers;
 
+	// Workspace directory for file exchange between testing framework and Flink containers
 	private final TemporaryFolder workspaceDirOutside = new TemporaryFolder();
 	private static final File workspaceDirInside = new File("/workspace");
+
+	private final TemporaryFolder checkpointDirOutside = new TemporaryFolder();
+	private static final File checkpointDirInside = new File("/checkpoint");
+
+	// Job directory for saving job JARs inside Flink containers
 	private static final File jobDirInside = new File("/jobs");
 
 	private RestClusterClient<String> client;
@@ -75,6 +81,11 @@ public class FlinkContainers extends ExternalResource {
 		jobManager.withFileSystemBind(workspaceDirOutside.getRoot().getAbsolutePath(), workspaceDirInside.getAbsolutePath(), BindMode.READ_WRITE);
 		taskManagers.forEach( tm -> tm.withFileSystemBind(workspaceDirOutside.getRoot().getAbsolutePath(), workspaceDirInside.getAbsolutePath(), BindMode.READ_WRITE));
 
+		// Create checkpoint folder and link to Flink containers
+		checkpointDirOutside.create();
+		jobManager.withFileSystemBind(checkpointDirOutside.getRoot().getAbsolutePath(), checkpointDirInside.getAbsolutePath(), BindMode.READ_WRITE);
+		taskManagers.forEach( tm -> tm.withFileSystemBind(checkpointDirOutside.getRoot().getAbsolutePath(), checkpointDirInside.getAbsolutePath(), BindMode.READ_WRITE));
+
 		// Launch JM
 		jobManager.start();
 		LOG.info("Flink Job Manager is running on {}, with REST port {}", getJobManagerHost(), getJobManagerRESTPort());
@@ -98,6 +109,7 @@ public class FlinkContainers extends ExternalResource {
 	@Override
 	protected void after() {
 		workspaceDirOutside.delete();
+		checkpointDirOutside.delete();
 		jobManager.stop();
 		taskManagers.forEach(GenericContainer::stop);
 		client.close();
@@ -251,6 +263,7 @@ public class FlinkContainers extends ExternalResource {
 			this.appName = appName;
 			this.numTaskManagers = numTaskManagers;
 			this.flinkProperties.put("jobmanager.rpc.address", JOBMANAGER_HOSTNAME);
+			this.flinkProperties.put("state.checkpoints.dir", "file://" + checkpointDirInside.getAbsolutePath());
 		}
 
 		public FlinkContainers.Builder dependOn(GenericContainer<?> container) {
