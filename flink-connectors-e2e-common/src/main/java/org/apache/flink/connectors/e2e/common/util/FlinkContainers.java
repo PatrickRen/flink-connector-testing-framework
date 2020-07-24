@@ -51,6 +51,7 @@ public class FlinkContainers extends ExternalResource {
 	// Job directory for saving job JARs inside Flink containers
 	private static final File jobDirInside = new File("/jobs");
 
+	// Flink client for monitoring job status
 	private RestClusterClient<String> client;
 
 	/**
@@ -191,7 +192,7 @@ public class FlinkContainers extends ExternalResource {
 		if (matcher.find()) {
 			return JobID.fromHexString(matcher.group(1));
 		} else {
-			// TODO: Should specify a exception system and use a speciific exception here
+			// TODO: Should specify a exception system and use a specific exception here
 			throw new Exception("Cannot find JobID from the output of \"flink run\"");
 		}
 	}

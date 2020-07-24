@@ -21,7 +21,7 @@ public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 	public static final String END_MARK = "END";
 
 	@Override
-	public ExternalSystem createExternalSystem() {
+	public ExternalSystem createExternalSystem() { //TODO: pass flink in
 		kafka = new KafkaContainerizedExternalSystem(flink);
 		return kafka;
 	}
@@ -57,9 +57,9 @@ public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 		return Dataset.isSame(sourceFile, destFile);
 	}
 
-	class KafkaSinkJob extends SinkJob {
+	class KafkaSinkJob extends SinkJob { //TODO: require job extend FlinkJob class
 		@Override
-		public File getJarFile() throws Exception {
+		public File getJarFile() throws Exception { //TODO: put this into base class
 			// Search JAR file in target directory
 			String moduleName = new File(System.getProperty("user.dir")).getName();
 			File targetDir = new File(System.getProperty("user.dir"), "target");
@@ -82,7 +82,7 @@ public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 		}
 
 		@Override
-		public String[] getArguments() {
+		public String[] getArguments() { //TODO: move out? properties?
 			return new String[]{
 					Paths.get(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), INPUT_FILENAME).toString(),
 					KafkaContainerizedExternalSystem.HOSTNAME + ":9092",
