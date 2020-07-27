@@ -1,8 +1,7 @@
 package org.apache.flink.connectors.e2e.kafka;
 
 import org.apache.flink.connectors.e2e.common.AbstractSourceSinkCombinedE2E;
-import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
-import org.apache.flink.connectors.e2e.common.external.KafkaContainerizedExternalSystem;
+import org.apache.flink.connectors.e2e.kafka.external.KafkaContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.util.Dataset;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 
@@ -21,12 +20,6 @@ public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 	public static final String END_MARK = "END";
 
 	@Override
-	public ExternalSystem createExternalSystem() { //TODO: pass flink in
-		kafka = new KafkaContainerizedExternalSystem(flink);
-		return kafka;
-	}
-
-	@Override
 	public SinkJob getSinkJob() {
 		return new KafkaSinkJob();
 	}
@@ -43,9 +36,6 @@ public class KafkaSourceSinkCombinedE2E extends AbstractSourceSinkCombinedE2E {
 		Dataset.writeRandomTextToFile(sourceFile, 100, 100);
 		Dataset.appendMarkToFile(sourceFile, END_MARK);
 		destFile = Paths.get(flink.getWorkspaceFolderOutside().getAbsolutePath(), OUTPUT_FILENAME).toFile();
-
-		// Prepare Kafka topic
-		kafka.createTopic(TOPIC, 1, (short)1);
 	}
 
 	@Override

@@ -2,7 +2,10 @@ package org.apache.flink.connectors.e2e.common;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
+import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.util.FlinkJob;
 import org.junit.Assert;
@@ -12,6 +15,11 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceLoader;
 
 @Ignore
 public abstract class AbstractSourceSinkCombinedE2E {
@@ -27,7 +35,32 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	public ExternalSystem externalSystem = createExternalSystem();
 
 	// External system related
-	public abstract ExternalSystem createExternalSystem();
+	public ExternalSystem createExternalSystem() {
+		ServiceLoader<ExternalSystemFactory> externalSystemFactoryLoader = ServiceLoader.load(ExternalSystemFactory.class);
+		Iterator<ExternalSystemFactory> factoryIterator = externalSystemFactoryLoader.iterator();
+		List<ExternalSystemFactory> discoveredFactory = new ArrayList<>();
+
+		while (factoryIterator.hasNext()) {
+			discoveredFactory.add(factoryIterator.next());
+		}
+
+		// No external system factory was found
+		if (discoveredFactory.isEmpty()) {
+			throw new IllegalStateException("No external system factory was found");
+		}
+
+		//TODO: Currently only allow to provide one external system factory
+		if (discoveredFactory.size() > 1) {
+			throw new IllegalStateException("Multiple external system factories were found");
+		}
+
+		ExternalSystem externalSystem = discoveredFactory.get(0).getExternalSystem();
+		if (externalSystem instanceof ContainerizedExternalSystem) {
+			// Containerized external system should bind with Flink cluster first
+			((ContainerizedExternalSystem)externalSystem).withFlinkContainers(flink);
+		}
+		return externalSystem;
+	}
 
 	// Resources when running the test
 	public abstract void initResources() throws Exception;

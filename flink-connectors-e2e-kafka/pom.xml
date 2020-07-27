@@ -29,14 +29,19 @@
             <version>${flink.version}</version>
             <scope>provided</scope>
         </dependency>
-
-        <!-- Dependencies for test -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connectors-e2e-common</artifactId>
             <version>0.1-SNAPSHOT</version>
-            <scope>test</scope>
         </dependency>
+
+        <!-- Dependencies for test -->
+<!--        <dependency>-->
+<!--            <groupId>org.apache.flink</groupId>-->
+<!--            <artifactId>flink-connectors-e2e-common</artifactId>-->
+<!--            <version>0.1-SNAPSHOT</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>org.apache.flink</groupId>
