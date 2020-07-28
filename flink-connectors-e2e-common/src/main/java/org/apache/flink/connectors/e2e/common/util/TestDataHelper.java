@@ -10,7 +10,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.Random;
 
-public class Dataset {
+public class TestDataHelper {
 
 	private static final int MAX_BUF_SIZE = 8192;
 

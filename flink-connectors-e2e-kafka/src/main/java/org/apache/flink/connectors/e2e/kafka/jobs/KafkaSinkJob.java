@@ -17,8 +17,14 @@ public class KafkaSinkJob extends AbstractSinkJob {
 	@Override
 	public SinkFunction<String> getSink() {
 		Properties kafkaProperties = new Properties();
-		kafkaProperties.setProperty("bootstrap.servers", KafkaContainerizedExternalSystem.HOSTNAME + ":9092");
-		kafkaProperties.setProperty("group.id", "test");
-		return new FlinkKafkaProducer<>("temp", new SimpleStringSchema(), kafkaProperties);
+		kafkaProperties.setProperty(
+				"bootstrap.servers",
+				KafkaContainerizedExternalSystem.ENTRY
+		);
+		return new FlinkKafkaProducer<>(
+				KafkaContainerizedExternalSystem.TOPIC,
+				new SimpleStringSchema(),
+				kafkaProperties
+		);
 	}
 }

@@ -5,7 +5,7 @@ import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
-import org.apache.flink.connectors.e2e.common.util.Dataset;
+import org.apache.flink.connectors.e2e.common.util.TestDataHelper;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.util.FlinkJobInfo;
 import org.apache.flink.runtime.rest.messages.JobExceptionsInfo;
@@ -76,8 +76,8 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	public void initResources() throws Exception {
 		// Prepare random files
 		sourceFile = new File(flink.getWorkspaceFolderOutside(), INPUT_FILENAME);
-		Dataset.writeRandomTextToFile(sourceFile, 100, 100);
-		Dataset.appendMarkToFile(sourceFile, END_MARK);
+		TestDataHelper.writeRandomTextToFile(sourceFile, 100, 100);
+		TestDataHelper.appendMarkToFile(sourceFile, END_MARK);
 		destFile = Paths.get(flink.getWorkspaceFolderOutside().getAbsolutePath(), OUTPUT_FILENAME).toFile();
 	}
 	public void cleanupResources() {}
@@ -86,8 +86,8 @@ public abstract class AbstractSourceSinkCombinedE2E {
 
 	/*------------------ Test result validation -------------------*/
 	public boolean validateResult() throws Exception {
-		Dataset.appendMarkToFile(destFile, END_MARK);
-		return Dataset.isSame(sourceFile, destFile);
+		TestDataHelper.appendMarkToFile(destFile, END_MARK);
+		return TestDataHelper.isSame(sourceFile, destFile);
 	}
 
 

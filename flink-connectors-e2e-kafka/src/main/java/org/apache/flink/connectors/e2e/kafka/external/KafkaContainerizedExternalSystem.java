@@ -17,12 +17,21 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class KafkaContainerizedExternalSystem extends ContainerizedExternalSystem<KafkaContainerizedExternalSystem> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(KafkaContainerizedExternalSystem.class);
+
+	// Kafka container and its related AdminClient
 	private final KafkaContainer kafka;
 	private AdminClient kafkaAdminClient;
 
+	// Name of this external system
 	public static final String NAME = "KafkaContainer";
 
+	// Hostname of Kafka in docker network, so that Flink can find it in network easily.
 	public static final String HOSTNAME = "kafka";
+	public static final int PORT = 9092;
+	public static final String ENTRY = HOSTNAME + ":" + PORT;
+
+	// Topic name for E2E test
+	public static final String TOPIC = "flink-kafka-e2e-test";
 
 	public KafkaContainerizedExternalSystem() {
 		kafka = new KafkaContainer()
@@ -54,6 +63,7 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 		}
 	}
 
+	/*------------------------------ Bind with Flink -------------------------------*/
 	@Override
 	public KafkaContainerizedExternalSystem withFlinkContainers(FlinkContainers flink) {
 		this.flink = flink;
@@ -86,7 +96,7 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 		LOG.info("Kafka container started.");
 
 		// Create a topic
-		createTopic("temp", 1, (short)1);
+		createTopic(TOPIC, 1, (short)1);
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 package org.apache.flink.connectors.e2e.common;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.flink.connectors.e2e.common.util.Dataset;
+import org.apache.flink.connectors.e2e.common.util.TestDataHelper;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -13,7 +13,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 
-public class DatasetTest {
+public class TestDataHelperTest {
 
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
@@ -24,7 +24,7 @@ public class DatasetTest {
 		int lengthPerLine = 100;
 		try {
 			File randomTextFile = tempFolder.newFile();
-			Dataset.writeRandomTextToFile(randomTextFile, numLine, lengthPerLine);
+			TestDataHelper.writeRandomTextToFile(randomTextFile, numLine, lengthPerLine);
 			Assert.assertEquals(numLine * (lengthPerLine + 1), randomTextFile.length());
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -36,7 +36,7 @@ public class DatasetTest {
 		int length = 100;
 		try {
 			File randomBinaryFile = tempFolder.newFile();
-			Dataset.writeRandomBinaryToFile(randomBinaryFile, length);
+			TestDataHelper.writeRandomBinaryToFile(randomBinaryFile, length);
 			Assert.assertEquals(length, randomBinaryFile.length());
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -51,17 +51,17 @@ public class DatasetTest {
 		try {
 			// Binary file
 			File randomBinaryFile = tempFolder.newFile();
-			Dataset.writeRandomBinaryToFile(randomBinaryFile, length);
+			TestDataHelper.writeRandomBinaryToFile(randomBinaryFile, length);
 			File duplicatedBinaryFile = tempFolder.newFile();
 			FileUtils.copyFile(randomBinaryFile, duplicatedBinaryFile);
-			Assert.assertTrue(Dataset.isSame(randomBinaryFile, duplicatedBinaryFile));
+			Assert.assertTrue(TestDataHelper.isSame(randomBinaryFile, duplicatedBinaryFile));
 
 			// Text file
 			File randomTextFile = tempFolder.newFile();
-			Dataset.writeRandomTextToFile(randomTextFile, numLine, lengthPerLine);
+			TestDataHelper.writeRandomTextToFile(randomTextFile, numLine, lengthPerLine);
 			File duplicatedTextFile = tempFolder.newFile();
 			FileUtils.copyFile(randomTextFile, duplicatedTextFile);
-			Assert.assertTrue(Dataset.isSame(randomTextFile, duplicatedTextFile));
+			Assert.assertTrue(TestDataHelper.isSame(randomTextFile, duplicatedTextFile));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -82,7 +82,7 @@ public class DatasetTest {
 			bf.close();
 			fw.close();
 
-			Dataset.appendMarkToFile(fileWithoutTrailingNewline, endMark);
+			TestDataHelper.appendMarkToFile(fileWithoutTrailingNewline, endMark);
 
 			FileReader fr = new FileReader(fileWithoutTrailingNewline);
 			BufferedReader br = new BufferedReader(fr);
@@ -102,7 +102,7 @@ public class DatasetTest {
 			bf.close();
 			fw.close();
 
-			Dataset.appendMarkToFile(fileWithTrailingNewline, endMark);
+			TestDataHelper.appendMarkToFile(fileWithTrailingNewline, endMark);
 
 			fr = new FileReader(fileWithTrailingNewline);
 			br = new BufferedReader(fr);

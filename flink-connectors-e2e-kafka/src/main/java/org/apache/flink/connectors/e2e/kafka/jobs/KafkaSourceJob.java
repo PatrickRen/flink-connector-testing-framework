@@ -16,11 +16,14 @@ public class KafkaSourceJob extends AbstractSourceJob {
 	@Override
 	public SourceFunction<String> getSource() {
 		Properties kafkaProperties = new Properties();
-		kafkaProperties.setProperty("bootstrap.servers", KafkaContainerizedExternalSystem.HOSTNAME + ":9092");
+		kafkaProperties.setProperty(
+				"bootstrap.servers",
+				KafkaContainerizedExternalSystem.ENTRY
+		);
 		kafkaProperties.setProperty("group.id", "test");
 
 		FlinkKafkaConsumer<String> kafkaSource = new FlinkKafkaConsumer<>(
-				"temp",
+				KafkaContainerizedExternalSystem.TOPIC,
 				new SimpleStringSchema() {
 					@Override
 					public boolean isEndOfStream(String nextElement) {
