@@ -54,6 +54,14 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 		}
 	}
 
+	@Override
+	public KafkaContainerizedExternalSystem withFlinkContainers(FlinkContainers flink) {
+		this.flink = flink;
+		kafka.dependsOn(flink.getJobManager())
+				.withNetwork(flink.getJobManager().getNetwork());
+		return this;
+	}
+
 	/*--------------------------- JUnit Lifecycle management ------------------------*/
 
 	/**
@@ -85,13 +93,5 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 	protected void after() {
 		kafkaAdminClient.close();
 		kafka.stop();
-	}
-
-	@Override
-	public KafkaContainerizedExternalSystem withFlinkContainers(FlinkContainers flink) {
-		this.flink = flink;
-		kafka.dependsOn(flink.getJobManager())
-				.withNetwork(flink.getJobManager().getNetwork());
-		return this;
 	}
 }

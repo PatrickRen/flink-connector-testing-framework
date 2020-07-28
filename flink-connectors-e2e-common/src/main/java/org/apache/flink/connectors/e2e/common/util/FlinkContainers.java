@@ -6,6 +6,11 @@ import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
+import org.apache.flink.runtime.rest.messages.EmptyRequestBody;
+import org.apache.flink.runtime.rest.messages.JobExceptionsHeaders;
+import org.apache.flink.runtime.rest.messages.JobExceptionsInfo;
+import org.apache.flink.runtime.rest.messages.JobMessageParameters;
+import org.apache.flink.runtime.rest.messages.job.JobExceptionsMessageParameters;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -118,7 +123,7 @@ public class FlinkContainers extends ExternalResource {
 
 	// ---------------------------- Flink job controlling ---------------------------------
 
-	public JobID submitJob(FlinkJob job) throws Exception {
+	public JobID submitJob(FlinkJobInfo job) throws Exception {
 		return copyAndSubmitJarJob(job.getJarFile(), job.getMainClassName(), job.getArguments());
 	}
 
@@ -148,13 +153,15 @@ public class FlinkContainers extends ExternalResource {
 			commandLine.add("-c");
 			commandLine.add(mainClass);
 			commandLine.add(jarPathInside);
-			commandLine.addAll(Arrays.asList(args));
+			if (args != null && args.length > 0) {
+				commandLine.addAll(Arrays.asList(args));
+			}
 			LOG.debug("Executing command in JM: {}", String.join(" ", commandLine));
 			Container.ExecResult result = jobManager.execInContainer(commandLine.toArray(new String[0]));
 			if (result.getExitCode() != 0) {
 				LOG.error("Command \"flink run\" exited with code {}. \nSTDOUT: {}\nSTDERR: {}",
 						result.getExitCode(), result.getStdout(), result.getStderr());
-				throw new Exception("Command \"flink run\" exited with code " + result.getExitCode());
+				throw new IllegalStateException("Command \"flink run\" exited with code " + result.getExitCode());
 			}
 			LOG.debug(result.getStdout());
 			return parseJobID(result.getStdout());
@@ -186,6 +193,13 @@ public class FlinkContainers extends ExternalResource {
 		);
 	}
 
+	public CompletableFuture<JobExceptionsInfo> getJobRootException(JobID jobID) {
+		final JobExceptionsHeaders exceptionsHeaders = JobExceptionsHeaders.getInstance();
+		final JobExceptionsMessageParameters params = exceptionsHeaders.getUnresolvedMessageParameters();
+		params.jobPathParameter.resolve(jobID);
+		return client.sendRequest(exceptionsHeaders, params, EmptyRequestBody.getInstance());
+	}
+
 	private JobID parseJobID(String stdoutString) throws Exception {
 		Pattern pattern = Pattern.compile("JobID ([a-f0-9]*)");
 		Matcher matcher = pattern.matcher(stdoutString);
@@ -196,6 +210,9 @@ public class FlinkContainers extends ExternalResource {
 			throw new Exception("Cannot find JobID from the output of \"flink run\"");
 		}
 	}
+
+
+
 
 	// ---------------------------- Flink containers properties ------------------------------
 
@@ -230,6 +247,9 @@ public class FlinkContainers extends ExternalResource {
 	public GenericContainer<?> getJobManager() {
 		return jobManager;
 	}
+
+
+
 
 	//--------------------------- Introduce failure ---------------------------------
 	/**
