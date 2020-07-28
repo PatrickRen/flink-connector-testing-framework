@@ -15,6 +15,7 @@ import java.io.File;
 
 public abstract class AbstractSinkJob extends FlinkJob {
 
+	// TODO: should use generic type here instead of hard-code String
 	public abstract SinkFunction<String> getSink();
 
 	public void run(String jobName) throws Exception {

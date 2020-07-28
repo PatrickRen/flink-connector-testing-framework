@@ -14,6 +14,7 @@ import java.io.FileWriter;
 
 public abstract class AbstractSourceJob extends FlinkJob {
 
+	// TODO: should use generic type here instead of hard-code String
 	public abstract SourceFunction<String> getSource();
 
 	public void run(String jobName) throws Exception {
