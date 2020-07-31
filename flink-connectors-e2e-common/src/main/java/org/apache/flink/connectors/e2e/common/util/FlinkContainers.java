@@ -292,6 +292,14 @@ public class FlinkContainers extends ExternalResource {
 		return taskManagers.get(0).getMappedPort(ControllableSource.RMI_PORT);
 	}
 
+	public List<Integer> getTaskManagerRMIPorts() {
+		List<Integer> rmiPortList = new ArrayList<>();
+		for (GenericContainer taskManager : taskManagers) {
+			rmiPortList.add(taskManager.getMappedPort(ControllableSource.RMI_PORT));
+		}
+		return rmiPortList;
+	}
+
 
 	//--------------------------- Introduce failure ---------------------------------
 

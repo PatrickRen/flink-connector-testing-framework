@@ -23,6 +23,7 @@ import sun.rmi.transport.tcp.TCPEndpoint;
 
 import java.io.File;
 import java.lang.reflect.Proxy;
+import java.rmi.NotBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.RemoteObject;
 
@@ -77,7 +78,7 @@ public abstract class AbstractSourceSinkCombinedE2E {
 
 		LOG.info("Flink JM is running at {}:{}", flink.getJobManagerHost(), flink.getJobManagerRESTPort());
 		LOG.info("Workspace path: {}", flink.getWorkspaceFolderOutside());
-		LOG.info("ControllableSource is listening on port {}", flink.getTaskManagerRMIPort());
+		LOG.info("ControllableSource is listening on one of these ports: {}", flink.getTaskManagerRMIPorts());
 
 		// Preparation
 		initResources();
@@ -137,17 +138,31 @@ public abstract class AbstractSourceSinkCombinedE2E {
 
 	/*-------------------- ControllableSource stub ----------------------*/
 	protected SourceControlRpc getSourceControlStub() throws Exception {
-		LOG.info("Connecting to controllable source at {}:{}", ControllableSource.RMI_HOSTNAME, flink.getTaskManagerRMIPort());
+		SourceControlRpc stub = null;
+		int actualRMIPort = -1;
 
+		for (Integer port : flink.getTaskManagerRMIPorts()) {
+			try {
+				stub = (SourceControlRpc) LocateRegistry.getRegistry(
+						ControllableSource.RMI_HOSTNAME,
+						port
+				).lookup("SourceControl");
+				actualRMIPort = port;
+				break;
+			} catch (NotBoundException e) {
+				// This isn't the task manager we want. Just skip it
+			}
+		}
 
-		SourceControlRpc stub = (SourceControlRpc) LocateRegistry.getRegistry(
-				ControllableSource.RMI_HOSTNAME,
-				flink.getTaskManagerRMIPort()
-		).lookup("SourceControl");
+		if (stub == null || actualRMIPort == -1) {
+			throw new IllegalStateException("Cannot find any controllable source among task managers");
+		}
+
+		LOG.info("Connected to controllable source at {}:{}", ControllableSource.RMI_HOSTNAME, actualRMIPort);
 
 		// Hack into the dynamic proxy object to correct the port number
 		TCPEndpoint ep = (TCPEndpoint) FieldUtils.readField(((UnicastRef) ((RemoteObject) Proxy.getInvocationHandler(stub)).getRef()).getLiveRef(), "ep", true);
-		FieldUtils.writeField(ep, "port", flink.getTaskManagerRMIPort(), true);
+		FieldUtils.writeField(ep, "port", actualRMIPort, true);
 
 		return stub;
 	}
