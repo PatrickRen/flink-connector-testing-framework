@@ -6,10 +6,10 @@ import org.apache.flink.client.program.rest.RestClusterClient;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.configuration.RestOptions;
+import org.apache.flink.connectors.e2e.common.source.ControllableSource;
 import org.apache.flink.runtime.rest.messages.EmptyRequestBody;
 import org.apache.flink.runtime.rest.messages.JobExceptionsHeaders;
 import org.apache.flink.runtime.rest.messages.JobExceptionsInfo;
-import org.apache.flink.runtime.rest.messages.JobMessageParameters;
 import org.apache.flink.runtime.rest.messages.job.JobExceptionsMessageParameters;
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
@@ -19,6 +19,7 @@ import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
 import java.io.File;
@@ -98,6 +99,7 @@ public class FlinkContainers extends ExternalResource {
 
 		// Launch TMs
 		taskManagers.forEach(GenericContainer::start);
+		LOG.info("{} Flink TaskManager(s) are running", taskManagers.size());
 
 		// Flink configurations
 		Configuration flinkConf = new Configuration();
@@ -117,7 +119,9 @@ public class FlinkContainers extends ExternalResource {
 		workspaceDirOutside.delete();
 		checkpointDirOutside.delete();
 		jobManager.stop();
+		LOG.info("Flink JobManager is stopped");
 		taskManagers.forEach(GenericContainer::stop);
+		LOG.info("{} Flink TaskManager(s) are stopped", taskManagers.size());
 		client.close();
 	}
 
@@ -176,7 +180,40 @@ public class FlinkContainers extends ExternalResource {
 		return client.getJobStatus(jobID);
 	}
 
-	public CompletableFuture<JobStatus> waitForJob(JobID jobID) {
+	public CompletableFuture<Void> waitForJobStatus(JobID jobID, JobStatus expectedStatus) {
+		return CompletableFuture.runAsync(
+				() -> {
+					JobStatus status = null;
+					try {
+						while (status == null || !status.equals(expectedStatus)) {
+							status = getJobStatus(jobID).get();
+							if (status.isTerminalState()) {
+								break;
+							}
+						}
+					} catch (Exception e) {
+						LOG.error("Get job status failed", e);
+						throw new CompletionException(e);
+					}
+					// If the job is entering an unexpected terminal status
+					if (status.isTerminalState() && !status.equals(expectedStatus)) {
+						try {
+							LOG.error("Job has entered a terminal status {}, but expected {}", status, expectedStatus);
+							if (status.equals(JobStatus.FAILED)) {
+								JobExceptionsInfo exceptionsInfo = getJobRootException(jobID).get();
+								LOG.error("Root exception of the job: \n{}", exceptionsInfo.getRootException());
+							}
+						} catch (Exception e) {
+							LOG.error("Error when processing job status", e);
+							throw new CompletionException(e);
+						}
+						throw new CompletionException(new IllegalStateException("Job has entered unexpected termination status"));
+					}
+				}
+		);
+	}
+
+	public CompletableFuture<JobStatus> waitForJobTermination(JobID jobID) {
 		return CompletableFuture.supplyAsync(
 			() -> {
 				JobStatus status = null;
@@ -210,9 +247,6 @@ public class FlinkContainers extends ExternalResource {
 			throw new Exception("Cannot find JobID from the output of \"flink run\"");
 		}
 	}
-
-
-
 
 	// ---------------------------- Flink containers properties ------------------------------
 
@@ -248,6 +282,10 @@ public class FlinkContainers extends ExternalResource {
 		return jobManager;
 	}
 
+	public int getTaskManagerRMIPort() {
+		// TODO: should support multiple TMs
+		return taskManagers.get(0).getMappedPort(ControllableSource.RMI_PORT);
+	}
 
 
 
@@ -323,9 +361,11 @@ public class FlinkContainers extends ExternalResource {
 			for (int i = 0; i < numTaskManagers; ++i) {
 				taskManagers.add(
 						new GenericContainer<>(FLINK_IMAGE_NAME)
+						.withExposedPorts(ControllableSource.RMI_PORT)
 						.withEnv("FLINK_PROPERTIES", toFlinkPropertiesString(flinkProperties))
 						.withCommand("taskmanager")
 						.withNetwork(flinkNetwork)
+						.waitingFor(Wait.forLogMessage(".*Successful registration at resource manager.*", 1))
 				);
 			}
 			return taskManagers;

@@ -1,14 +1,16 @@
 package org.apache.flink.connectors.e2e.common;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
+import org.apache.flink.connectors.e2e.common.source.ControllableSource;
+import org.apache.flink.connectors.e2e.common.source.SourceControlRpc;
 import org.apache.flink.connectors.e2e.common.util.DatasetHelper;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.util.FlinkJobInfo;
-import org.apache.flink.runtime.rest.messages.JobExceptionsInfo;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -16,9 +18,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.rmi.server.UnicastRef;
+import sun.rmi.transport.tcp.TCPEndpoint;
 
 import java.io.File;
-import java.nio.file.Paths;
+import java.lang.reflect.Proxy;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.server.RemoteObject;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -73,72 +79,97 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	public static final String OUTPUT_FILENAME = "output.txt";
 	public static final String END_MARK = "END";
 
-	public void initResources() throws Exception {
-		// Prepare random files
-		sourceFile = new File(flink.getWorkspaceFolderOutside(), INPUT_FILENAME);
-		DatasetHelper.writeRandomTextToFile(sourceFile, 100, 100);
-		DatasetHelper.appendMarkToFile(sourceFile, END_MARK);
-		destFile = Paths.get(flink.getWorkspaceFolderOutside().getAbsolutePath(), OUTPUT_FILENAME).toFile();
-	}
+	public void initResources() {}
+
 	public void cleanupResources() {}
 
-
-
 	/*------------------ Test result validation -------------------*/
+
 	public boolean validateResult() throws Exception {
-		DatasetHelper.appendMarkToFile(destFile, END_MARK);
-		return DatasetHelper.isSame(sourceFile, destFile);
+		File recordingFile = new File(flink.getWorkspaceFolderOutside(), "record.txt");
+		File outputFile = new File(flink.getWorkspaceFolderOutside(), "output.txt");
+		return DatasetHelper.isSame(recordingFile, outputFile);
 	}
-
-
 
 	/*---------------------------- Test cases ----------------------------*/
 	@Test
-	public void testSourceSinkBasicFunctionality() throws Exception {
+	public void testSourceSinkWithControllableSource() throws Exception {
 
 		LOG.info("Flink JM is running at {}:{}", flink.getJobManagerHost(), flink.getJobManagerRESTPort());
 		LOG.info("Workspace path: {}", flink.getWorkspaceFolderOutside());
+		LOG.info("ControllableSource is listening on port {}", flink.getTaskManagerRMIPort());
 
 		// Preparation
 		initResources();
 
+		// Submit sink and source job
 		LOG.info("Submitting jobs to Flink containers...");
-		// Submit two Flink jobs
 		JobID sinkJobID = flink.submitJob(getSinkJob());
 		LOG.info("Sink job submitted with JobID {}", sinkJobID);
 		JobID sourceJobID = flink.submitJob(getSourceJob());
 		LOG.info("Source job submitted with JobID {}", sourceJobID);
 
-		// Wait for Flink job result
-		LOG.info("Waiting for job...");
-		// TODO: This should be wrapped using CompletableFuture
-		JobStatus sinkJobStatus = flink.waitForJob(sinkJobID).get();
-		LOG.info("Sink job status has transited to {}", sinkJobStatus);
+		// Wait for job ready
+		LOG.info("Waiting for job ready...");
+		flink.waitForJobStatus(sinkJobID, JobStatus.RUNNING).get();
+		flink.waitForJobStatus(sourceJobID, JobStatus.RUNNING).get();
 
-		// Handling job failure
-		if (sinkJobStatus == JobStatus.FAILED) {
-			// Get job root exceptions
-			JobExceptionsInfo exceptionsInfo = flink.getJobRootException(sinkJobID).get();
-			LOG.error("Sink job failed with root exception: \n{}", exceptionsInfo.getRootException());
-			throw new IllegalStateException("Sink job failed");
-		}
+		// Get source controling stub
+		SourceControlRpc stub = getSourceControlStub();
 
-		JobStatus sourceJobStatus = flink.waitForJob(sourceJobID).get();
-		LOG.info("Source job status has transited to {}", sourceJobStatus);
+		// Emit 5 records
+		stub.next();
+		stub.next();
+		stub.next();
+		stub.next();
+		stub.next();
 
-		// Validate result
+		// Emit a lot of records
+		stub.go();
+		Thread.sleep(1000);
+
+		// Stop emitting
+		stub.pause();
+
+		// Finish the job
+		stub.finish();
+
+		// Wait for job finish
+		flink.waitForJobStatus(sinkJobID, JobStatus.FINISHED).get();
+		flink.waitForJobStatus(sourceJobID, JobStatus.FINISHED).get();
+
+		// Validate
 		Assert.assertTrue(validateResult());
 
-		// Cleanup
 		cleanupResources();
 	}
 
-	private FlinkJobInfo getSinkJob() throws Exception {
+	/*--------------------- Flink job related ---------------------*/
+
+	protected FlinkJobInfo getSinkJob() throws Exception {
 		return new FlinkJobInfo(FlinkJobInfo.JobType.SINK_JOB);
 	}
 
-	private FlinkJobInfo getSourceJob() throws Exception {
+	protected FlinkJobInfo getSourceJob() throws Exception {
 		return new FlinkJobInfo(FlinkJobInfo.JobType.SOURCE_JOB);
+	}
+
+
+	/*-------------------- ControllableSource stub ----------------------*/
+	protected SourceControlRpc getSourceControlStub() throws Exception {
+		LOG.info("Connecting to controllable source at {}:{}", ControllableSource.RMI_HOSTNAME, flink.getTaskManagerRMIPort());
+
+
+		SourceControlRpc stub = (SourceControlRpc) LocateRegistry.getRegistry(
+				ControllableSource.RMI_HOSTNAME,
+				flink.getTaskManagerRMIPort()
+		).lookup("SourceControl");
+
+		// Hack into the dynamic proxy object to correct the port number
+		TCPEndpoint ep = (TCPEndpoint)FieldUtils.readField(((UnicastRef)((RemoteObject)Proxy.getInvocationHandler(stub)).getRef()).getLiveRef(), "ep", true);
+		FieldUtils.writeField(ep, "port", flink.getTaskManagerRMIPort(), true);
+
+		return stub;
 	}
 
 }

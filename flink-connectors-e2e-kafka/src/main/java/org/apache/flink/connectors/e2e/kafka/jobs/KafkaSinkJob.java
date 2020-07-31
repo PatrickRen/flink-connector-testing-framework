@@ -11,7 +11,8 @@ import java.util.Properties;
 public class KafkaSinkJob extends AbstractSinkJob {
 
 	public static void main(String[] args) throws Exception {
-		(new KafkaSinkJob()).run("KafkaSinkJob");
+		// (new KafkaSinkJob()).run("KafkaSinkJob");
+		(new KafkaSinkJob()).run("Controllable Kafka sink job");
 	}
 
 	@Override
