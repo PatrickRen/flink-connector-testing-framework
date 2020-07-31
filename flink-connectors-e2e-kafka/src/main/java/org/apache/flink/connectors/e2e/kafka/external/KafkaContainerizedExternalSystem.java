@@ -45,8 +45,9 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 	/**
 	 * Create a topic in Kafka container. This is a blocking method which will wait for the result of
 	 * topic creation.
-	 * @param topicName Name of the new topic
-	 * @param numPartitions Number of partitions
+	 *
+	 * @param topicName         Name of the new topic
+	 * @param numPartitions     Number of partitions
 	 * @param replicationFactor Number of replications
 	 * @throws Exception
 	 */
@@ -77,6 +78,7 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 	/**
 	 * External system initialization. All preparation work should be done here because
 	 * testing framework is aware of nothing about the external system
+	 *
 	 * @throws Throwable
 	 */
 	@Override
@@ -96,7 +98,7 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 		LOG.info("Kafka container started.");
 
 		// Create a topic
-		createTopic(TOPIC, 1, (short)1);
+		createTopic(TOPIC, 1, (short) 1);
 	}
 
 	@Override

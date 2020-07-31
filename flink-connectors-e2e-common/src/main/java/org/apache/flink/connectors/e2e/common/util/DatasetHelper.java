@@ -36,7 +36,7 @@ public class DatasetHelper {
 		BufferedWriter bw = new BufferedWriter(fw, MAX_BUF_SIZE);
 		Random random = new Random();
 		for (int i = 0; i < numLine; i++) {
-			for (int j = 0 ; j < lengthPerLine; j++) {
+			for (int j = 0; j < lengthPerLine; j++) {
 				bw.write(alphaNumericString.charAt(random.nextInt(alphaNumericString.length())));
 			}
 			bw.newLine();
@@ -51,7 +51,7 @@ public class DatasetHelper {
 		int character;
 		char lastChar = 0;
 		while ((character = br.read()) > 0) {
-			lastChar = (char)character;
+			lastChar = (char) character;
 		}
 		br.close();
 		fr.close();

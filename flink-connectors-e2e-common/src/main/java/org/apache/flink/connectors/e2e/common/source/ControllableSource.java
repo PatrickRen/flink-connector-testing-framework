@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -86,7 +85,7 @@ public class ControllableSource
 
 		// Main loop
 		while (isRunning) {
-			
+
 			if (isStepping) {
 
 				while (numElementsToEmit.get() > 0) {
@@ -113,7 +112,7 @@ public class ControllableSource
 			emitAndRecordElement(ctx, generateRandomString(20));
 			numElementsToEmit.decrementAndGet();
 		}
-		
+
 		// Emit end mark before exit
 		ctx.collect(END_MARK);
 	}
@@ -183,7 +182,7 @@ public class ControllableSource
 		}
 		return sb.toString();
 	}
-	
+
 	private void emitAndRecordElement(SourceContext<String> ctx, String element) throws Exception {
 		ctx.collect(element);
 		br.append(element).append('\n');

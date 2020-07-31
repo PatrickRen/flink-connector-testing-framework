@@ -62,7 +62,8 @@ public class FlinkContainers extends ExternalResource {
 
 	/**
 	 * Construct a flink container group
-	 * @param jobManager Job manager container
+	 *
+	 * @param jobManager   Job manager container
 	 * @param taskManagers List of task manager containers
 	 */
 	private FlinkContainers(GenericContainer<?> jobManager, List<GenericContainer<?>> taskManagers) {
@@ -72,7 +73,8 @@ public class FlinkContainers extends ExternalResource {
 
 	/**
 	 * Get a builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers
-	 * @param appName Name of the cluster
+	 *
+	 * @param appName         Name of the cluster
 	 * @param numTaskManagers Number of task managers
 	 * @return Builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers
 	 */
@@ -86,12 +88,12 @@ public class FlinkContainers extends ExternalResource {
 		// Create temporary workspace and link it to Flink containers
 		workspaceDirOutside.create();
 		jobManager.withFileSystemBind(workspaceDirOutside.getRoot().getAbsolutePath(), workspaceDirInside.getAbsolutePath(), BindMode.READ_WRITE);
-		taskManagers.forEach( tm -> tm.withFileSystemBind(workspaceDirOutside.getRoot().getAbsolutePath(), workspaceDirInside.getAbsolutePath(), BindMode.READ_WRITE));
+		taskManagers.forEach(tm -> tm.withFileSystemBind(workspaceDirOutside.getRoot().getAbsolutePath(), workspaceDirInside.getAbsolutePath(), BindMode.READ_WRITE));
 
 		// Create checkpoint folder and link to Flink containers
 		checkpointDirOutside.create();
 		jobManager.withFileSystemBind(checkpointDirOutside.getRoot().getAbsolutePath(), checkpointDirInside.getAbsolutePath(), BindMode.READ_WRITE);
-		taskManagers.forEach( tm -> tm.withFileSystemBind(checkpointDirOutside.getRoot().getAbsolutePath(), checkpointDirInside.getAbsolutePath(), BindMode.READ_WRITE));
+		taskManagers.forEach(tm -> tm.withFileSystemBind(checkpointDirOutside.getRoot().getAbsolutePath(), checkpointDirInside.getAbsolutePath(), BindMode.READ_WRITE));
 
 		// Launch JM
 		jobManager.start();
@@ -134,7 +136,7 @@ public class FlinkContainers extends ExternalResource {
 	public JobID copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
 		// Validate JAR file first
 		if (!jarFileOutside.exists()) {
-			throw new FileNotFoundException("JAR file '" + jarFileOutside.getAbsolutePath()  + "' does not exist");
+			throw new FileNotFoundException("JAR file '" + jarFileOutside.getAbsolutePath() + "' does not exist");
 		}
 
 		try {
@@ -215,18 +217,18 @@ public class FlinkContainers extends ExternalResource {
 
 	public CompletableFuture<JobStatus> waitForJobTermination(JobID jobID) {
 		return CompletableFuture.supplyAsync(
-			() -> {
-				JobStatus status = null;
-				try {
-					while (status == null || !status.isTerminalState()) {
-						status = getJobStatus(jobID).get();
+				() -> {
+					JobStatus status = null;
+					try {
+						while (status == null || !status.isTerminalState()) {
+							status = getJobStatus(jobID).get();
+						}
+					} catch (Exception e) {
+						LOG.error("Get job status failed", e);
+						throw new CompletionException(e);
 					}
-				} catch (Exception e) {
-					LOG.error("Get job status failed", e);
-					throw new CompletionException(e);
+					return status;
 				}
-				return status;
-			}
 		);
 	}
 
@@ -252,6 +254,7 @@ public class FlinkContainers extends ExternalResource {
 
 	/**
 	 * Get the hostname of job manager
+	 *
 	 * @return Hostname of job manager in string
 	 */
 	public String getJobManagerHost() {
@@ -260,6 +263,7 @@ public class FlinkContainers extends ExternalResource {
 
 	/**
 	 * Get the port of job master's REST service running on
+	 *
 	 * @return Port number in int
 	 */
 	public int getJobManagerRESTPort() {
@@ -268,6 +272,7 @@ public class FlinkContainers extends ExternalResource {
 
 	/**
 	 * Get workspace folder
+	 *
 	 * @return Workspace folder in File
 	 */
 	public File getWorkspaceFolderOutside() {
@@ -288,10 +293,11 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 
-
 	//--------------------------- Introduce failure ---------------------------------
+
 	/**
 	 * Shutdown a task manager container and restart it
+	 *
 	 * @param taskManagerIndex Index of task manager container to be restarted
 	 */
 	public void restartTaskManagers(int taskManagerIndex) {
@@ -312,7 +318,7 @@ public class FlinkContainers extends ExternalResource {
 		private static final String JOBMANAGER_HOSTNAME = "jobmaster";
 		private static final int JOBMANAGER_REST_PORT = 8081;
 
-		private String appName;
+		private final String appName;
 		private final int numTaskManagers;
 		private final Map<String, String> flinkProperties = new HashMap<>();
 		private final Network flinkNetwork = Network.newNetwork();
@@ -333,8 +339,8 @@ public class FlinkContainers extends ExternalResource {
 
 		public FlinkContainers build() {
 			return new FlinkContainers(
-				createJobMasterContainer(flinkProperties, flinkNetwork, dependentContainers),
-				createTaskManagerContainers(flinkProperties, flinkNetwork, numTaskManagers)
+					createJobMasterContainer(flinkProperties, flinkNetwork, dependentContainers),
+					createTaskManagerContainers(flinkProperties, flinkNetwork, numTaskManagers)
 			);
 		}
 
@@ -361,11 +367,11 @@ public class FlinkContainers extends ExternalResource {
 			for (int i = 0; i < numTaskManagers; ++i) {
 				taskManagers.add(
 						new GenericContainer<>(FLINK_IMAGE_NAME)
-						.withExposedPorts(ControllableSource.RMI_PORT)
-						.withEnv("FLINK_PROPERTIES", toFlinkPropertiesString(flinkProperties))
-						.withCommand("taskmanager")
-						.withNetwork(flinkNetwork)
-						.waitingFor(Wait.forLogMessage(".*Successful registration at resource manager.*", 1))
+								.withExposedPorts(ControllableSource.RMI_PORT)
+								.withEnv("FLINK_PROPERTIES", toFlinkPropertiesString(flinkProperties))
+								.withCommand("taskmanager")
+								.withNetwork(flinkNetwork)
+								.waitingFor(Wait.forLogMessage(".*Successful registration at resource manager.*", 1))
 				);
 			}
 			return taskManagers;

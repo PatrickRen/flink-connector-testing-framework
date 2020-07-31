@@ -7,5 +7,6 @@ import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
  */
 public abstract class ContainerizedExternalSystem<T extends ContainerizedExternalSystem> extends ExternalSystem {
 	protected FlinkContainers flink;
+
 	public abstract T withFlinkContainers(FlinkContainers flink);
 }

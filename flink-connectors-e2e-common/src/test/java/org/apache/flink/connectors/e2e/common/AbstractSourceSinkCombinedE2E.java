@@ -25,10 +25,6 @@ import java.io.File;
 import java.lang.reflect.Proxy;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.RemoteObject;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ServiceLoader;
 
 @Ignore
 public abstract class AbstractSourceSinkCombinedE2E {
@@ -45,32 +41,14 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	public ExternalSystem externalSystem = createExternalSystem();
 
 	public ExternalSystem createExternalSystem() {
-		ServiceLoader<ExternalSystemFactory> externalSystemFactoryLoader = ServiceLoader.load(ExternalSystemFactory.class);
-		Iterator<ExternalSystemFactory> factoryIterator = externalSystemFactoryLoader.iterator();
-		List<ExternalSystemFactory> discoveredFactory = new ArrayList<>();
-
-		while (factoryIterator.hasNext()) {
-			discoveredFactory.add(factoryIterator.next());
-		}
-
-		// No external system factory was found
-		if (discoveredFactory.isEmpty()) {
-			throw new IllegalStateException("No external system factory was found");
-		}
-
-		//TODO: Currently only allow to provide one external system factory
-		if (discoveredFactory.size() > 1) {
-			throw new IllegalStateException("Multiple external system factories were found");
-		}
-
-		ExternalSystem externalSystem = discoveredFactory.get(0).getExternalSystem();
+		ExternalSystem externalSystem = getExternalSystemFactory().getExternalSystem();
 		if (externalSystem instanceof ContainerizedExternalSystem) {
-			// Containerized external system should bind with Flink cluster first
-			((ContainerizedExternalSystem)externalSystem).withFlinkContainers(flink);
+			((ContainerizedExternalSystem) externalSystem).withFlinkContainers(flink);
 		}
 		return externalSystem;
 	}
 
+	protected abstract ExternalSystemFactory getExternalSystemFactory();
 
 	/*------------------ Resources needed for the test -------------------*/
 	protected File sourceFile;
@@ -79,9 +57,11 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	public static final String OUTPUT_FILENAME = "output.txt";
 	public static final String END_MARK = "END";
 
-	public void initResources() {}
+	public void initResources() {
+	}
 
-	public void cleanupResources() {}
+	public void cleanupResources() {
+	}
 
 	/*------------------ Test result validation -------------------*/
 
@@ -166,7 +146,7 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		).lookup("SourceControl");
 
 		// Hack into the dynamic proxy object to correct the port number
-		TCPEndpoint ep = (TCPEndpoint)FieldUtils.readField(((UnicastRef)((RemoteObject)Proxy.getInvocationHandler(stub)).getRef()).getLiveRef(), "ep", true);
+		TCPEndpoint ep = (TCPEndpoint) FieldUtils.readField(((UnicastRef) ((RemoteObject) Proxy.getInvocationHandler(stub)).getRef()).getLiveRef(), "ep", true);
 		FieldUtils.writeField(ep, "port", flink.getTaskManagerRMIPort(), true);
 
 		return stub;
