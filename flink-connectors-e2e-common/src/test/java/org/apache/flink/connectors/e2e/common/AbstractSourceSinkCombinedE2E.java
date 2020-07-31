@@ -137,6 +137,7 @@ public abstract class AbstractSourceSinkCombinedE2E {
 
 
 	/*-------------------- ControllableSource stub ----------------------*/
+
 	protected SourceControlRpc getSourceControlStub() throws Exception {
 		SourceControlRpc stub = null;
 		int actualRMIPort = -1;
@@ -160,7 +161,9 @@ public abstract class AbstractSourceSinkCombinedE2E {
 
 		LOG.info("Connected to controllable source at {}:{}", ControllableSource.RMI_HOSTNAME, actualRMIPort);
 
-		// Hack into the dynamic proxy object to correct the port number
+		// Because of the mechanism of Java RMI, host and port registered in RMI registry would be LOCAL inside docker,
+		// which is not accessible on docker host / testing framework.
+		// So we "hack" into the dynamic proxy object created by Java RMI to correct the port number using reflection.
 		TCPEndpoint ep = (TCPEndpoint) FieldUtils.readField(((UnicastRef) ((RemoteObject) Proxy.getInvocationHandler(stub)).getRef()).getLiveRef(), "ep", true);
 		FieldUtils.writeField(ep, "port", actualRMIPort, true);
 

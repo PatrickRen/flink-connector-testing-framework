@@ -85,9 +85,8 @@ public class ControllableSource
 
 		// Main loop
 		while (isRunning) {
-
 			if (isStepping) {
-
+				// Step run
 				while (numElementsToEmit.get() > 0) {
 					emitAndRecordElement(ctx, generateRandomString(20));
 					numElementsToEmit.decrementAndGet();
@@ -98,10 +97,8 @@ public class ControllableSource
 						syncLock.wait();
 					}
 				}
-
 			} else {
-
-				LOG.info("###### IS RUNNING....");
+				// Continuous run
 				emitAndRecordElement(ctx, generateRandomString(10));
 			}
 		}
@@ -148,7 +145,6 @@ public class ControllableSource
 		synchronized (syncLock) {
 			syncLock.notify();
 		}
-		LOG.info("###### NEXT!");
 	}
 
 	@Override
@@ -157,7 +153,6 @@ public class ControllableSource
 			isStepping = false;
 			syncLock.notify();
 		}
-		LOG.info("###### GO!");
 	}
 
 	@Override
