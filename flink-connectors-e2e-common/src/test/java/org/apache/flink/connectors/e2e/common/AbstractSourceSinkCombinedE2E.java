@@ -1,13 +1,10 @@
 package org.apache.flink.connectors.e2e.common;
 
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
-import org.apache.flink.connectors.e2e.common.source.ControllableSource;
-import org.apache.flink.connectors.e2e.common.source.SourceControlRpc;
 import org.apache.flink.connectors.e2e.common.util.DatasetHelper;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.util.FlinkJobUtils;
@@ -21,8 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.rmi.NotBoundException;
-import java.rmi.registry.LocateRegistry;
 
 @Ignore
 public abstract class AbstractSourceSinkCombinedE2E {

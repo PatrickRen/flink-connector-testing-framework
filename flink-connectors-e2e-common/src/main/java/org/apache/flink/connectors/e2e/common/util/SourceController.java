@@ -57,7 +57,8 @@ public class SourceController implements SourceControlRpc {
 				"port", actualRMIPort, true);
 	}
 
-	private SourceController() {}
+	private SourceController() {
+	}
 
 	@Override
 	public void pause() throws RemoteException {
