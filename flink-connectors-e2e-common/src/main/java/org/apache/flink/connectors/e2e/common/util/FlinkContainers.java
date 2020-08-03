@@ -129,8 +129,8 @@ public class FlinkContainers extends ExternalResource {
 
 	// ---------------------------- Flink job controlling ---------------------------------
 
-	public JobID submitJob(FlinkJobInfo job) throws Exception {
-		return copyAndSubmitJarJob(job.getJarFile(), job.getMainClassName(), job.getArguments());
+	public JobID submitJob(File jarFileOutside, String mainClass) throws Exception {
+		return copyAndSubmitJarJob(jarFileOutside, mainClass, null);
 	}
 
 	public JobID copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
@@ -151,6 +151,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	public JobID submitJarJob(String jarPathInside, String mainClass, String[] args) throws Exception {
+		LOG.info("Submitting job {} ...", mainClass);
 		try {
 			List<String> commandLine = new ArrayList<>();
 			commandLine.add("flink");
@@ -170,7 +171,9 @@ public class FlinkContainers extends ExternalResource {
 				throw new IllegalStateException("Command \"flink run\" exited with code " + result.getExitCode());
 			}
 			LOG.debug(result.getStdout());
-			return parseJobID(result.getStdout());
+			JobID jobID = parseJobID(result.getStdout());
+			LOG.info("Job {} has been submitted with JobID {}", mainClass, jobID);
+			return jobID;
 
 		} catch (Exception e) {
 			LOG.error("Flink job submission failed", e);
