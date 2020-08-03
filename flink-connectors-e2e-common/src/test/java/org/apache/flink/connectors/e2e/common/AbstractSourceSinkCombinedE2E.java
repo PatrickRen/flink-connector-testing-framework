@@ -79,8 +79,8 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		initResources();
 
 		// Submit sink and source job
-		JobID sinkJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSinkJobClassName());
-		JobID sourceJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSourceJobClassName());
+		JobID sinkJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSinkJobClassName(getClass().getPackage()));
+		JobID sourceJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSourceJobClassName(getClass().getPackage()));
 
 		// Wait for job ready
 		LOG.info("Wait until jobs are ready...");
