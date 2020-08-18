@@ -24,4 +24,4 @@ atlassian-ide-plugin.xml
 out/
 *.ipr
 *.iws
-*/dependency-reduced-pom.xml
+**/dependency-reduced-pom.xml
