@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.time.Duration;
 
 @Ignore
 public abstract class AbstractSourceSinkCombinedE2E {
@@ -75,47 +76,49 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		LOG.info("Workspace path: {}", flink.getWorkspaceFolderOutside());
 		LOG.info("ControllableSource is listening on one of these ports: {}", flink.getTaskManagerRMIPorts());
 
-		// Preparation
+		// STEP 0: Preparation
 		initResources();
 
-		// Submit sink and source job
+		// STEP 1: Sink job
+		LOG.info("Submitting sink job and wait until job is ready...");
 		JobID sinkJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSinkJobClassName(getClass().getPackage()));
-		JobID sourceJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSourceJobClassName(getClass().getPackage()));
-
-		// Wait for job ready
-		LOG.info("Wait until jobs are ready...");
 		flink.waitForJobStatus(sinkJobID, JobStatus.RUNNING).get();
-		flink.waitForJobStatus(sourceJobID, JobStatus.RUNNING).get();
 
-		// Get source controling stub
+		LOG.info("Start testing...");
+		// Grab the source controller stub
 		SourceController sourceController = new SourceController(flink.getTaskManagerRMIPorts());
+		sourceController.connect(Duration.ofSeconds(10));
 
-		// Emit 5 records
+		LOG.info("Emitting 5 records...");
 		sourceController.next();
 		sourceController.next();
 		sourceController.next();
 		sourceController.next();
 		sourceController.next();
 
-		// Emit a lot of records
+		LOG.info("Emitting a lot of records...");
 		sourceController.go();
 		Thread.sleep(1000);
-
 		// Stop emitting
 		sourceController.pause();
 
-		// Finish the job
+		LOG.info("Stopping the sink job...");
+		// Finish the source job
 		sourceController.finish();
-
-		// Wait for job finish
 		flink.waitForJobStatus(sinkJobID, JobStatus.FINISHED).get();
+
+		// STEP 2: Source job
+		LOG.info("Submitting source job and wait until job is ready...");
+		JobID sourceJobID = flink.submitJob(FlinkJobUtils.searchJar(), FlinkJobUtils.getSourceJobClassName(getClass().getPackage()));
+		flink.waitForJobStatus(sourceJobID, JobStatus.RUNNING).get();
+
+		LOG.info("Waiting for job finishing...");
 		flink.waitForJobStatus(sourceJobID, JobStatus.FINISHED).get();
 
-		// Validate
+		// STEP 3: Validate
 		Assert.assertTrue(validateResult());
 
+		// STEP 4: Cleanup
 		cleanupResources();
-
 	}
-
 }
