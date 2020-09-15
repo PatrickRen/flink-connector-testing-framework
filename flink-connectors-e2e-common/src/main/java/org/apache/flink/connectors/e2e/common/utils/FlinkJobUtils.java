@@ -1,4 +1,4 @@
-package org.apache.flink.connectors.e2e.common.util;
+package org.apache.flink.connectors.e2e.common.utils;
 
 
 import org.apache.flink.connectors.e2e.common.jobs.AbstractSinkJob;

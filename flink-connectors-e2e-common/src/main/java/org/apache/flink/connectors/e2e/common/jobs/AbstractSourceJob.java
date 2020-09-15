@@ -1,13 +1,15 @@
 package org.apache.flink.connectors.e2e.common.jobs;
 
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connectors.e2e.common.SourceJobTerminationPattern;
 import org.apache.flink.connectors.e2e.common.TestContext;
-import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.SuccessException;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,11 @@ public abstract class AbstractSourceJob extends FlinkJob {
 
 	public void run(TestContext<String> context) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+		if (context.sourceJobTerminationPattern() == SourceJobTerminationPattern.END_MARK) {
+			env.setRestartStrategy(RestartStrategies.noRestart());
+		}
+
 		File outputFile = new File(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), "output.txt");
 
 		DataStream<String> stream = env.addSource(context.source());
@@ -75,12 +82,6 @@ public abstract class AbstractSourceJob extends FlinkJob {
 			if (flushPerRecord) {
 				sinkBufferedWriter.flush();
 			}
-		}
-	}
-
-	static class SuccessException extends RuntimeException {
-		SuccessException(String message) {
-			super(message);
 		}
 	}
 }

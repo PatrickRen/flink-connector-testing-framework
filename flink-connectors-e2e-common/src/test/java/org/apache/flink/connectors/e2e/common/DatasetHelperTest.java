@@ -1,7 +1,7 @@
 package org.apache.flink.connectors.e2e.common;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.flink.connectors.e2e.common.util.DatasetHelper;
+import org.apache.flink.connectors.e2e.common.utils.DatasetHelper;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;

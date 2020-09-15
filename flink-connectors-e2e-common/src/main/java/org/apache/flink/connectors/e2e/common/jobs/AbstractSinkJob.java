@@ -2,7 +2,7 @@ package org.apache.flink.connectors.e2e.common.jobs;
 
 import org.apache.flink.connectors.e2e.common.TestContext;
 import org.apache.flink.connectors.e2e.common.source.ControllableSource;
-import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 import java.io.File;

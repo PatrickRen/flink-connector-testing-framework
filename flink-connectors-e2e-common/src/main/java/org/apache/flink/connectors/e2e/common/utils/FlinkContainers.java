@@ -1,4 +1,4 @@
-package org.apache.flink.connectors.e2e.common.util;
+package org.apache.flink.connectors.e2e.common.utils;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
@@ -187,34 +187,58 @@ public class FlinkContainers extends ExternalResource {
 
 	public CompletableFuture<Void> waitForJobStatus(JobID jobID, JobStatus expectedStatus) {
 		return CompletableFuture.runAsync(
-				() -> {
-					JobStatus status = null;
+			() -> {
+				JobStatus status = null;
+				try {
+					while (status == null || !status.equals(expectedStatus)) {
+						status = getJobStatus(jobID).get();
+						if (status.isTerminalState()) {
+							break;
+						}
+					}
+				} catch (Exception e) {
+					LOG.error("Get job status failed", e);
+					throw new CompletionException(e);
+				}
+				// If the job is entering an unexpected terminal status
+				if (status.isTerminalState() && !status.equals(expectedStatus)) {
 					try {
-						while (status == null || !status.equals(expectedStatus)) {
-							status = getJobStatus(jobID).get();
-							if (status.isTerminalState()) {
-								break;
-							}
+						LOG.error("Job has entered a terminal status {}, but expected {}", status, expectedStatus);
+						if (status.equals(JobStatus.FAILED)) {
+							JobExceptionsInfo exceptionsInfo = getJobRootException(jobID).get();
+							LOG.error("Root exception of the job: \n{}", exceptionsInfo.getRootException());
 						}
 					} catch (Exception e) {
-						LOG.error("Get job status failed", e);
+						LOG.error("Error when processing job status", e);
 						throw new CompletionException(e);
 					}
-					// If the job is entering an unexpected terminal status
-					if (status.isTerminalState() && !status.equals(expectedStatus)) {
-						try {
-							LOG.error("Job has entered a terminal status {}, but expected {}", status, expectedStatus);
-							if (status.equals(JobStatus.FAILED)) {
-								JobExceptionsInfo exceptionsInfo = getJobRootException(jobID).get();
-								LOG.error("Root exception of the job: \n{}", exceptionsInfo.getRootException());
-							}
-						} catch (Exception e) {
-							LOG.error("Error when processing job status", e);
-							throw new CompletionException(e);
-						}
-						throw new CompletionException(new IllegalStateException("Job has entered unexpected termination status"));
-					}
+					throw new CompletionException(new IllegalStateException("Job has entered unexpected termination status"));
 				}
+			}
+		);
+	}
+
+	public CompletableFuture<Void> waitForFailingWithSuccessException(JobID jobID) {
+		return CompletableFuture.runAsync(
+			() -> {
+				try {
+					waitForJobStatus(jobID, JobStatus.FAILED).get();
+					JobExceptionsInfo exceptionsInfo = getJobRootException(jobID).get();
+					if (exceptionsInfo.getAllExceptions().isEmpty()) {
+						throw new CompletionException(new IllegalStateException("No exception are thrown in the job"));
+					}
+					// Analyze exception
+					boolean anyMatch = Arrays.stream(exceptionsInfo.getRootException().split("\n"))
+							.filter( line -> line.startsWith("Caused by: "))
+							.anyMatch( line -> line.contains(SuccessException.class.getCanonicalName()));
+					if (!anyMatch) {
+						LOG.error("Root exception: {}", exceptionsInfo.getRootException());
+						throw new CompletionException(new IllegalStateException("Cannot find SuccessException in stacktrace"));
+					}
+				} catch (Exception e) {
+					throw new CompletionException(e);
+				}
+			}
 		);
 	}
 

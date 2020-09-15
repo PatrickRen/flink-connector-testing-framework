@@ -5,10 +5,10 @@ import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
-import org.apache.flink.connectors.e2e.common.util.DatasetHelper;
-import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
-import org.apache.flink.connectors.e2e.common.util.FlinkJobUtils;
-import org.apache.flink.connectors.e2e.common.util.SourceController;
+import org.apache.flink.connectors.e2e.common.utils.DatasetHelper;
+import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.FlinkJobUtils;
+import org.apache.flink.connectors.e2e.common.utils.SourceController;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -113,10 +113,20 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		flink.waitForJobStatus(sourceJobID, JobStatus.RUNNING).get();
 
 		LOG.info("Waiting for job finishing...");
-		if (testContext().sourceJobTerminationPattern() == SourceJobTerminationPattern.FORCE_STOP) {
-			// We need to wait until we get all records in the file
+
+		switch (testContext().sourceJobTerminationPattern()) {
+			case END_MARK:
+				flink.waitForFailingWithSuccessException(sourceJobID).get();
+				break;
+			case FORCE_STOP:
+				// We need to wait until we get all records in the file, and then kill the job
+			case DESERIALIZATION_SCHEMA:
+			case BOUNDED_SOURCE:
+				flink.waitForJobStatus(sourceJobID, JobStatus.FINISHED).get();
+				break;
+			default:
+				throw new IllegalStateException("Unrecognized termination pattern");
 		}
-		flink.waitForJobStatus(sourceJobID, JobStatus.FINISHED).get();
 
 		// STEP 3: Validate
 		Assert.assertTrue(validateResult());

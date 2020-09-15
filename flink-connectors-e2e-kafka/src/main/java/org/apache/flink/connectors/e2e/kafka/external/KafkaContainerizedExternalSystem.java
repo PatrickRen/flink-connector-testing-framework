@@ -1,7 +1,7 @@
 package org.apache.flink.connectors.e2e.kafka.external;
 
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
-import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
 import org.apache.flink.util.Preconditions;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;

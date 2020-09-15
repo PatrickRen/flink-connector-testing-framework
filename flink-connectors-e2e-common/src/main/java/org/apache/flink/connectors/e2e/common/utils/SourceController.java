@@ -1,4 +1,4 @@
-package org.apache.flink.connectors.e2e.common.util;
+package org.apache.flink.connectors.e2e.common.utils;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.connectors.e2e.common.source.ControllableSource;
@@ -7,12 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.rmi.NotBoundException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.time.Duration;
 import java.util.List;
-import java.util.Timer;
 
 public class SourceController implements SourceControlRpc {
 

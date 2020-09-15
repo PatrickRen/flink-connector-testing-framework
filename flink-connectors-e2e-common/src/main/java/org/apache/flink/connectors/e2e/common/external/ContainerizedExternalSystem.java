@@ -1,6 +1,6 @@
 package org.apache.flink.connectors.e2e.common.external;
 
-import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
 
 /**
  * External system using <a href="https://www.testcontainers.org/">Testcontainers</a>
