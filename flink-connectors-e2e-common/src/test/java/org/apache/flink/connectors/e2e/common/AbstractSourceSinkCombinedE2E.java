@@ -113,6 +113,9 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		flink.waitForJobStatus(sourceJobID, JobStatus.RUNNING).get();
 
 		LOG.info("Waiting for job finishing...");
+		if (testContext().sourceJobTerminationPattern() == SourceJobTerminationPattern.FORCE_STOP) {
+			// We need to wait until we get all records in the file
+		}
 		flink.waitForJobStatus(sourceJobID, JobStatus.FINISHED).get();
 
 		// STEP 3: Validate
@@ -121,4 +124,6 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		// STEP 4: Cleanup
 		cleanupResources();
 	}
+
+	protected abstract TestContext testContext();
 }

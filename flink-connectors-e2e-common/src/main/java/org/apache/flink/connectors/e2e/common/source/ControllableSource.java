@@ -131,11 +131,13 @@ public class ControllableSource
 	/*------------------------- Java RMI related ----------------------*/
 	@Override
 	public void pause() throws RemoteException {
+		LOG.info("Received command PAUSE");
 		isStepping = true;
 	}
 
 	@Override
 	public void next() throws RemoteException {
+		LOG.info("Received command NEXT");
 		// if main thread is running, just ignore the request
 		if (!isStepping) {
 			return;
@@ -149,6 +151,7 @@ public class ControllableSource
 
 	@Override
 	public void go() throws RemoteException {
+		LOG.info("Received command GO");
 		synchronized (syncLock) {
 			isStepping = false;
 			syncLock.notify();
@@ -157,6 +160,7 @@ public class ControllableSource
 
 	@Override
 	public void finish() throws RemoteException {
+		LOG.info("Received command FINISH");
 		synchronized (syncLock) {
 			isRunning = false;
 			syncLock.notify();

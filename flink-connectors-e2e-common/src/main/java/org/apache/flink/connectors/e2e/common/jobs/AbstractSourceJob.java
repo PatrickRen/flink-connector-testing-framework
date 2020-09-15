@@ -1,7 +1,10 @@
 package org.apache.flink.connectors.e2e.common.jobs;
 
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connectors.e2e.common.TestContext;
 import org.apache.flink.connectors.e2e.common.util.FlinkContainers;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -14,14 +17,30 @@ import java.io.FileWriter;
 
 public abstract class AbstractSourceJob extends FlinkJob {
 
-	// TODO: should use generic type here instead of hard-code String
-	public abstract SourceFunction<String> getSource();
-
-	public void run(String jobName) throws Exception {
+	public void run(TestContext<String> context) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		File outputFile = new File(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), "output.txt");
-		env.addSource(getSource()).addSink(new SimpleFileSink(outputFile.getAbsolutePath()));
-		env.execute(jobName);
+
+		DataStream<String> stream = env.addSource(context.source());
+
+		switch (context.sourceJobTerminationPattern()) {
+			case END_MARK:
+				stream = stream.map((MapFunction<String, String>) value -> {
+					if (value.equals("END")) {
+						throw new SuccessException("Successfully received end mark");
+					}
+					return value;
+				});
+				break;
+			case BOUNDED_SOURCE:
+			case DESERIALIZATION_SCHEMA:
+			case FORCE_STOP:
+				break;
+			default:
+				throw new IllegalStateException("Unrecognized stop pattern");
+		}
+		stream.addSink(new SimpleFileSink(outputFile.getAbsolutePath(), true));
+		env.execute(context.jobName() + "-Source");
 	}
 
 	static class SimpleFileSink extends RichSinkFunction<String> {
@@ -29,9 +48,11 @@ public abstract class AbstractSourceJob extends FlinkJob {
 		String filePath;
 		File sinkFile;
 		BufferedWriter sinkBufferedWriter;
+		boolean flushPerRecord;
 
-		SimpleFileSink(String filePath) {
+		SimpleFileSink(String filePath, boolean flushPerRecord) {
 			this.filePath = filePath;
+			this.flushPerRecord = flushPerRecord;
 		}
 
 		@Override
@@ -51,6 +72,15 @@ public abstract class AbstractSourceJob extends FlinkJob {
 		public void invoke(String value, Context context) throws Exception {
 			LOG.info("Invoked with value: {}", value);
 			sinkBufferedWriter.append(value).append("\n");
+			if (flushPerRecord) {
+				sinkBufferedWriter.flush();
+			}
+		}
+	}
+
+	static class SuccessException extends RuntimeException {
+		SuccessException(String message) {
+			super(message);
 		}
 	}
 }
