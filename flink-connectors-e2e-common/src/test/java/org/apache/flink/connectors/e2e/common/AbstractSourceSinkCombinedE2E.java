@@ -59,7 +59,11 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		LOG.info("Validating test result...");
 		File recordingFile = new File(flink.getWorkspaceFolderOutside(), "record.txt");
 		File outputFile = new File(flink.getWorkspaceFolderOutside(), "output.txt");
-		return DatasetHelper.isSame(recordingFile, outputFile);
+		boolean result = DatasetHelper.isSame(recordingFile, outputFile);
+		if (!result) {
+			flink.keepTestScene();
+		}
+		return result;
 	}
 
 	/*---------------------------- Test cases ----------------------------*/

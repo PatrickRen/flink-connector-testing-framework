@@ -60,6 +60,9 @@ public class FlinkContainers extends ExternalResource {
 	// Flink client for monitoring job status
 	private RestClusterClient<String> client;
 
+	// Whether keep all temporary folders for later check
+	boolean keepTestScene = false;
+
 	/**
 	 * Construct a flink container group
 	 *
@@ -118,13 +121,22 @@ public class FlinkContainers extends ExternalResource {
 
 	@Override
 	protected void after() {
-		workspaceDirOutside.delete();
-		checkpointDirOutside.delete();
+		if (!keepTestScene) {
+			workspaceDirOutside.delete();
+			checkpointDirOutside.delete();
+		} else {
+			LOG.info("Workspace directory is kept at {}", workspaceDirOutside.getRoot().getAbsolutePath());
+			LOG.info("Checkpoint directory is kept at {}", checkpointDirOutside.getRoot().getAbsolutePath());
+		}
 		jobManager.stop();
 		LOG.info("Flink JobManager is stopped");
 		taskManagers.forEach(GenericContainer::stop);
 		LOG.info("{} Flink TaskManager(s) are stopped", taskManagers.size());
 		client.close();
+	}
+
+	public void keepTestScene() {
+		keepTestScene = true;
 	}
 
 	// ---------------------------- Flink job controlling ---------------------------------
