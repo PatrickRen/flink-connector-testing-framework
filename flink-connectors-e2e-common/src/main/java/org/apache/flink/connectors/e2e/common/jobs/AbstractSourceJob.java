@@ -22,18 +22,18 @@ public abstract class AbstractSourceJob extends FlinkJob {
 	public void run(TestContext<String> context) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		if (context.sourceJobTerminationPattern() == SourceJobTerminationPattern.END_MARK) {
+		if (context.sourceJobTerminationPattern() == SourceJobTerminationPattern.END_MARK_FILTERING) {
 			env.setRestartStrategy(RestartStrategies.noRestart());
 		}
 
 		File outputFile = new File(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), "output.txt");
 
-		DataStream<String> stream = env.addSource(context.source());
+		DataStream<String> stream = env.addSource(context.createSource());
 
 		switch (context.sourceJobTerminationPattern()) {
-			case END_MARK:
+			case END_MARK_FILTERING:
 				stream = stream.map((MapFunction<String, String>) value -> {
-					if (value.equals("END")) {
+					if (value.equals(END_MARK)) {
 						throw new SuccessException("Successfully received end mark");
 					}
 					return value;

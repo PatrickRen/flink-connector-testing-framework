@@ -3,6 +3,7 @@ package org.apache.flink.connectors.e2e.kafka;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connectors.e2e.common.SourceJobTerminationPattern;
 import org.apache.flink.connectors.e2e.common.TestContext;
+import org.apache.flink.connectors.e2e.common.jobs.FlinkJob;
 import org.apache.flink.connectors.e2e.kafka.external.KafkaContainerizedExternalSystem;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
@@ -18,7 +19,7 @@ public class KafkaTestContext implements TestContext<String> {
 	}
 
 	@Override
-	public SourceFunction<String> source() {
+	public SourceFunction<String> createSource() {
 		Properties kafkaProperties = new Properties();
 		kafkaProperties.setProperty(
 				"bootstrap.servers",
@@ -31,7 +32,7 @@ public class KafkaTestContext implements TestContext<String> {
 				new SimpleStringSchema() {
 					@Override
 					public boolean isEndOfStream(String nextElement) {
-						return nextElement.equals("END");
+						return nextElement.equals(FlinkJob.END_MARK);
 					}
 				},
 				kafkaProperties);
@@ -40,7 +41,7 @@ public class KafkaTestContext implements TestContext<String> {
 	}
 
 	@Override
-	public SinkFunction<String> sink() {
+	public SinkFunction<String> createSink() {
 		Properties kafkaProperties = new Properties();
 		kafkaProperties.setProperty(
 				"bootstrap.servers",

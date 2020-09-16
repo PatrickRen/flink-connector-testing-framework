@@ -11,9 +11,9 @@ public abstract class AbstractSinkJob extends FlinkJob {
 
 	public void run(TestContext<String> testContext) throws Exception {
 		File recordFile = new File(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), "record.txt");
-		ControllableSource controllableSource = new ControllableSource(recordFile.getAbsolutePath(), "END");
+		ControllableSource controllableSource = new ControllableSource(recordFile.getAbsolutePath(), END_MARK);
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.addSource(controllableSource).addSink(testContext.sink());
+		env.addSource(controllableSource).addSink(testContext.createSink());
 		env.execute(testContext.jobName() + "-Sink");
 	}
 

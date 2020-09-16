@@ -6,8 +6,12 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import java.io.Serializable;
 
 public interface TestContext<T> extends Serializable {
+
 	String jobName();
-	SourceFunction<T> source();
-	SinkFunction<T> sink();
+
+	SourceFunction<T> createSource();
+
+	SinkFunction<T> createSink();
+
 	SourceJobTerminationPattern sourceJobTerminationPattern();
 }

@@ -45,12 +45,6 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	protected abstract ExternalSystemFactory getExternalSystemFactory();
 
 	/*------------------ Resources needed for the test -------------------*/
-	protected File sourceFile;
-	protected File destFile;
-	public static final String INPUT_FILENAME = "random.txt";
-	public static final String OUTPUT_FILENAME = "output.txt";
-	public static final String END_MARK = "END";
-
 	public void initResources() {
 		LOG.info("Initializing test resources...");
 	}
@@ -115,7 +109,7 @@ public abstract class AbstractSourceSinkCombinedE2E {
 		LOG.info("Waiting for job finishing...");
 
 		switch (testContext().sourceJobTerminationPattern()) {
-			case END_MARK:
+			case END_MARK_FILTERING:
 				flink.waitForFailingWithSuccessException(sourceJobID).get();
 				break;
 			case FORCE_STOP:
