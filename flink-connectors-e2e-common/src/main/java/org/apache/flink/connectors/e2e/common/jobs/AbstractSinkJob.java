@@ -25,8 +25,24 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 import java.io.File;
 
+/**
+ * Abstract Flink job for testing sink connector.
+ *
+ * <p>The topology of this job is:</p>
+ *
+ * <p>ControllableSource --> Testing sink</p>
+ *
+ * <p>The source controlled by testing framework will generate random records to downstream, which will be output
+ * to external system by the sink connector. In the meantime, all generated random records will be written into
+ * a plain text file named "record.txt" in the workspace managed by testing framework. </p>
+ */
 public abstract class AbstractSinkJob extends FlinkJob {
 
+	/**
+	 * Main entry of the job.
+	 * @param testContext Context of the test
+	 * @throws Exception if job execution failed
+	 */
 	public void run(TestContext<String> testContext) throws Exception {
 		File recordFile = new File(FlinkContainers.getWorkspaceDirInside().getAbsolutePath(), "record.txt");
 		ControllableSource controllableSource = new ControllableSource(recordFile.getAbsolutePath(), END_MARK);

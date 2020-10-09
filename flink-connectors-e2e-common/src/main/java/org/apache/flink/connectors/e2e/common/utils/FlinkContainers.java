@@ -29,6 +29,7 @@ import org.apache.flink.runtime.rest.messages.EmptyRequestBody;
 import org.apache.flink.runtime.rest.messages.JobExceptionsHeaders;
 import org.apache.flink.runtime.rest.messages.JobExceptionsInfo;
 import org.apache.flink.runtime.rest.messages.job.JobExceptionsMessageParameters;
+
 import org.junit.rules.ExternalResource;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
@@ -56,7 +57,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Flink cluster running on containers.
+ * Flink cluster running on <a href="https://www.testcontainers.org/">Testcontainers</a>.
+ *
+ * <p>This cluster is integrated with components below:</p>
+ *
+ * <li>Job manager and task managers</li>
+ * <li>REST cluster client for job status tracking</li>
+ * <li>Workspace directory for storing files generated in flink jobs</li>
+ * <li>Checkpoint directory for storing checkpoints</li>
+ * <li>Job directory for storing Flink job JAR files</li>
  */
 public class FlinkContainers extends ExternalResource {
 
@@ -69,6 +78,7 @@ public class FlinkContainers extends ExternalResource {
 	private final TemporaryFolder workspaceDirOutside = new TemporaryFolder();
 	private static final File workspaceDirInside = new File("/workspace");
 
+	// Checkpoint directory for storing checkpoints
 	private final TemporaryFolder checkpointDirOutside = new TemporaryFolder();
 	private static final File checkpointDirInside = new File("/checkpoint");
 
@@ -78,11 +88,11 @@ public class FlinkContainers extends ExternalResource {
 	// Flink client for monitoring job status
 	private RestClusterClient<String> client;
 
-	// Whether keep all temporary folders for later check
+	// Whether keep all temporary folders for post-test checking
 	boolean keepTestScene = false;
 
 	/**
-	 * Construct a flink container group
+	 * Construct a flink container group.
 	 *
 	 * @param jobManager   Job manager container
 	 * @param taskManagers List of task manager containers
@@ -93,7 +103,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Get a builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers
+	 * Get a builder of {@link FlinkContainers}.
 	 *
 	 * @param appName         Name of the cluster
 	 * @param numTaskManagers Number of task managers
@@ -159,30 +169,46 @@ public class FlinkContainers extends ExternalResource {
 
 	// ---------------------------- Flink job controlling ---------------------------------
 
-	public JobID submitJob(File jarFileOutside, String mainClass) throws Exception {
+	/**
+	 * Submit a JAR file to Flink cluster.
+	 * @param jarFileOutside JAR file on the host machine outside the Flink containers
+	 * @param mainClass Name of the Flink job's main class
+	 * @return ID of the job
+	 * @throws FileNotFoundException if the JAR file does not exist
+	 */
+	public JobID submitJob(File jarFileOutside, String mainClass) throws FileNotFoundException {
 		return copyAndSubmitJarJob(jarFileOutside, mainClass, null);
 	}
 
-	public JobID copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws Exception {
+	/**
+	 * Copy the JAR file into the job directory and submit it to Flink cluster.
+	 * @param jarFileOutside JAR file on the host machine outside the Flink containers
+	 * @param mainClass Name of the Flink job's main class
+	 * @param args Arguments for running 'flink job' command
+	 * @return ID of the job
+	 * @throws FileNotFoundException if the JAR file does not exist
+	 */
+	public JobID copyAndSubmitJarJob(File jarFileOutside, String mainClass, String[] args) throws FileNotFoundException {
 		// Validate JAR file first
 		if (!jarFileOutside.exists()) {
 			throw new FileNotFoundException("JAR file '" + jarFileOutside.getAbsolutePath() + "' does not exist");
 		}
 
-		try {
-			// Copy jar into job manager first
-			jobManager.copyFileToContainer(MountableFile.forHostPath(jarFileOutside.getAbsolutePath()), Paths.get(jobDirInside.getAbsolutePath(), jarFileOutside.getName()).toString());
-		} catch (Exception e) {
-			LOG.error("Failed to copy JAR file into job manager container", e);
-			throw new Exception(e);
-		}
+		jobManager.copyFileToContainer(MountableFile.forHostPath(jarFileOutside.getAbsolutePath()), Paths.get(jobDirInside.getAbsolutePath(), jarFileOutside.getName()).toString());
 		Path jarPathInside = Paths.get(jobDirInside.getAbsolutePath(), jarFileOutside.getName());
 		return submitJarJob(jarPathInside.toAbsolutePath().toString(), mainClass, args);
 	}
 
-	public JobID submitJarJob(String jarPathInside, String mainClass, String[] args) throws Exception {
-		LOG.info("Submitting job {} ...", mainClass);
+	/**
+	 * Submit the JAR with the file path inside the container.
+	 * @param jarPathInside Path of the JAR inside the container
+	 * @param mainClass Name of the Flink job's main class
+	 * @param args Arguments for running 'flink job' command
+	 * @return ID of the job
+	 */
+	public JobID submitJarJob(String jarPathInside, String mainClass, String[] args) {
 		try {
+			LOG.info("Submitting job {} ...", mainClass);
 			List<String> commandLine = new ArrayList<>();
 			commandLine.add("flink");
 			commandLine.add("run");
@@ -204,17 +230,26 @@ public class FlinkContainers extends ExternalResource {
 			JobID jobID = parseJobID(result.getStdout());
 			LOG.info("Job {} has been submitted with JobID {}", mainClass, jobID);
 			return jobID;
-
 		} catch (Exception e) {
-			LOG.error("Flink job submission failed", e);
-			throw new Exception(e);
+			throw new RuntimeException("Failed to submit JAR to Flink cluster", e);
 		}
 	}
 
+	/**
+	 * Get the status of a job.
+	 * @param jobID ID of the job
+	 * @return CompletableFuture of JobStatus
+	 */
 	public CompletableFuture<JobStatus> getJobStatus(JobID jobID) {
 		return client.getJobStatus(jobID);
 	}
 
+	/**
+	 * Wait for job entering the given expected status.
+	 * @param jobID ID of the job
+	 * @param expectedStatus The expected status of the job
+	 * @return CompletableFuture for waiting the job status transition
+	 */
 	public CompletableFuture<Void> waitForJobStatus(JobID jobID, JobStatus expectedStatus) {
 		return CompletableFuture.runAsync(
 			() -> {
@@ -248,6 +283,11 @@ public class FlinkContainers extends ExternalResource {
 		);
 	}
 
+	/**
+	 * Wait for job being terminated by {@link SuccessException} thrown by map operator.
+	 * @param jobID ID of the job
+	 * @return CompletableFuture for waiting the job status transition
+	 */
 	public CompletableFuture<Void> waitForFailingWithSuccessException(JobID jobID) {
 		return CompletableFuture.runAsync(
 			() -> {
@@ -259,8 +299,8 @@ public class FlinkContainers extends ExternalResource {
 					}
 					// Analyze exception
 					boolean anyMatch = Arrays.stream(exceptionsInfo.getRootException().split("\n"))
-							.filter( line -> line.startsWith("Caused by: "))
-							.anyMatch( line -> line.contains(SuccessException.class.getCanonicalName()));
+							.filter(line -> line.startsWith("Caused by: "))
+							.anyMatch(line -> line.contains(SuccessException.class.getCanonicalName()));
 					if (!anyMatch) {
 						LOG.error("Root exception: {}", exceptionsInfo.getRootException());
 						throw new CompletionException(new IllegalStateException("Cannot find SuccessException in stacktrace"));
@@ -272,6 +312,11 @@ public class FlinkContainers extends ExternalResource {
 		);
 	}
 
+	/**
+	 * Wait for job entering a termination status.
+	 * @param jobID ID of the job
+	 * @return CompletableFuture of the final job status
+	 */
 	public CompletableFuture<JobStatus> waitForJobTermination(JobID jobID) {
 		return CompletableFuture.supplyAsync(
 				() -> {
@@ -289,6 +334,11 @@ public class FlinkContainers extends ExternalResource {
 		);
 	}
 
+	/**
+	 * Get the root exception of the job for failure analyzing.
+	 * @param jobID ID of the job
+	 * @return CompletableFuture of job exception information
+	 */
 	public CompletableFuture<JobExceptionsInfo> getJobRootException(JobID jobID) {
 		final JobExceptionsHeaders exceptionsHeaders = JobExceptionsHeaders.getInstance();
 		final JobExceptionsMessageParameters params = exceptionsHeaders.getUnresolvedMessageParameters();
@@ -296,21 +346,21 @@ public class FlinkContainers extends ExternalResource {
 		return client.sendRequest(exceptionsHeaders, params, EmptyRequestBody.getInstance());
 	}
 
-	private JobID parseJobID(String stdoutString) throws Exception {
+	private JobID parseJobID(String stdoutString) {
 		Pattern pattern = Pattern.compile("JobID ([a-f0-9]*)");
 		Matcher matcher = pattern.matcher(stdoutString);
 		if (matcher.find()) {
 			return JobID.fromHexString(matcher.group(1));
 		} else {
 			// TODO: Should specify a exception system and use a specific exception here
-			throw new Exception("Cannot find JobID from the output of \"flink run\"");
+			throw new IllegalStateException("Cannot find JobID from the output of \"flink run\"");
 		}
 	}
 
 	// ---------------------------- Flink containers properties ------------------------------
 
 	/**
-	 * Get the hostname of job manager
+	 * Get the hostname of job manager.
 	 *
 	 * @return Hostname of job manager in string
 	 */
@@ -319,7 +369,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Get the port of job master's REST service running on
+	 * Get the port of job master's REST service running on.
 	 *
 	 * @return Port number in int
 	 */
@@ -328,7 +378,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Get workspace folder
+	 * Get workspace folder from host machine.
 	 *
 	 * @return Workspace folder in File
 	 */
@@ -336,17 +386,16 @@ public class FlinkContainers extends ExternalResource {
 		return workspaceDirOutside.getRoot();
 	}
 
+	/**
+	 * Get workspace folder inside containers.
+	 * @return Workspace folder in File
+	 */
 	public static File getWorkspaceDirInside() {
 		return workspaceDirInside;
 	}
 
 	public GenericContainer<?> getJobManager() {
 		return jobManager;
-	}
-
-	public int getTaskManagerRMIPort() {
-		// TODO: should support multiple TMs
-		return taskManagers.get(0).getMappedPort(ControllableSource.RMI_PORT);
 	}
 
 	public List<Integer> getTaskManagerRMIPorts() {
@@ -357,11 +406,10 @@ public class FlinkContainers extends ExternalResource {
 		return rmiPortList;
 	}
 
-
 	//--------------------------- Introduce failure ---------------------------------
 
 	/**
-	 * Shutdown a task manager container and restart it
+	 * Shutdown a task manager container and restart it.
 	 *
 	 * @param taskManagerIndex Index of task manager container to be restarted
 	 */
@@ -375,7 +423,7 @@ public class FlinkContainers extends ExternalResource {
 	}
 
 	/**
-	 * Builder of org.apache.flink.connectors.e2e.common.util.FlinkContainers.
+	 * Builder of {@link FlinkContainers}.
 	 */
 	public static final class Builder {
 

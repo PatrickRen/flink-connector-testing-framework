@@ -23,6 +23,14 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import java.io.Serializable;
 
+/**
+ * Context of the test.
+ *
+ * <p>User need to provide some instances and information of the test to testing framework, including name of Flink
+ * jobs, instance of tested source/sink and job termination pattern.</p>
+ *
+ * @param <T> Type of elements after deserialization by source and before serialization by sink
+ */
 public interface TestContext<T> extends Serializable {
 
 	String jobName();

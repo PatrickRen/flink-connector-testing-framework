@@ -18,8 +18,23 @@
 
 package org.apache.flink.connectors.e2e.common.external;
 
+/**
+ * Factory for external system.
+ *
+ * <p>This factory will be used by the testing framework for constructing and initializing external system for every
+ * individual test.</p>
+ */
 public interface ExternalSystemFactory {
+
+	/**
+	 * Get a new instance of external system.
+	 * @return A new instance of external system
+	 */
 	ExternalSystem getExternalSystem();
 
+	/**
+	 * Get the name of the external system.
+	 * @return Name of external system
+	 */
 	String name();
 }

@@ -18,13 +18,19 @@
 
 package org.apache.flink.connectors.e2e.common;
 
+/**
+ * Patterns for how source job is terminated.
+ *
+ * <p>Since we cannot assume whether the tested source is bounded or not (whether the source job would finish itself),
+ * framework user has to provide a pattern of terminating the job.</p>
+ */
 public enum SourceJobTerminationPattern {
 
 	/* Using new source API introduced in FLIP-27 and the source itself is bounded. */
 	BOUNDED_SOURCE,
 
 	/**
-	 * Using {@link org.apache.flink.api.common.serialization.DeserializationSchema#isEndOfStream(Object)}
+	 * Using {@link org.apache.flink.api.common.serialization.DeserializationSchema#isEndOfStream}
 	 * to stop the source.
 	 */
 	DESERIALIZATION_SCHEMA,

@@ -16,10 +16,11 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connectors.e2e.common;
+package org.apache.flink.connectors.e2e.common.e2e;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
+import org.apache.flink.connectors.e2e.common.TestContext;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
@@ -27,6 +28,7 @@ import org.apache.flink.connectors.e2e.common.utils.DatasetHelper;
 import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
 import org.apache.flink.connectors.e2e.common.utils.FlinkJobUtils;
 import org.apache.flink.connectors.e2e.common.utils.SourceController;
+
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -38,6 +40,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.time.Duration;
 
+/**
+ * Abstract class for source and sink combined end-to-end test.
+ */
 @Ignore
 public abstract class AbstractSourceSinkCombinedE2E {
 
@@ -63,6 +68,7 @@ public abstract class AbstractSourceSinkCombinedE2E {
 	protected abstract ExternalSystemFactory getExternalSystemFactory();
 
 	/*------------------ Resources needed for the test -------------------*/
+
 	public void initResources() {
 		LOG.info("Initializing test resources...");
 	}

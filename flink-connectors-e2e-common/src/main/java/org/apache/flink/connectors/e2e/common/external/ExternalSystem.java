@@ -20,5 +20,11 @@ package org.apache.flink.connectors.e2e.common.external;
 
 import org.junit.rules.ExternalResource;
 
+/**
+ * General external system for end-to-end testing.
+ *
+ * <p>This external system extends {@link ExternalResource} class so that lifecycle of the external system
+ *  * can be managed by JUnit.</p>
+ */
 public abstract class ExternalSystem extends ExternalResource {
 }

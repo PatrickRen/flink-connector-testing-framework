@@ -28,6 +28,9 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.Random;
 
+/**
+ * Helper functions for test data generating and validation.
+ */
 public class DatasetHelper {
 
 	private static final int MAX_BUF_SIZE = 8192;

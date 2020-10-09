@@ -21,6 +21,9 @@ package org.apache.flink.connectors.e2e.kafka.external;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystem;
 import org.apache.flink.connectors.e2e.common.external.ExternalSystemFactory;
 
+/**
+ * Factory for Kafka external system.
+ */
 public class KafkaContainerizedExternalSystemFactory implements ExternalSystemFactory {
 
 	@Override

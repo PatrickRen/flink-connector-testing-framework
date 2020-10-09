@@ -28,6 +28,7 @@ import org.apache.flink.connectors.e2e.common.utils.SuccessException;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +36,28 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 
+/**
+ * Abstract Flink job for testing source connector.
+ *
+ * <p>The topology of this job is: </p>
+ *
+ * <p>Tested source --> map(optional) -> SimpleFileSink</p>
+ *
+ * <p>The source will consume records from external system and send them to downstream via an optional map operator,
+ * and records will be written into a file named "output.txt" in the workspace managed by testing framework.</p>
+ *
+ * <p>If the job termination pattern is {@link SourceJobTerminationPattern#END_MARK_FILTERING}, which means
+ * the tested source is unbounded, a map operator will be inserted between source and sink for filtering the end mark,
+ * and a {@link SuccessException} will be thrown for terminating the job if the end mark is received by the map
+ * operator. </p>
+ */
 public abstract class AbstractSourceJob extends FlinkJob {
 
+	/**
+	 * Main entry of the job.
+	 * @param context Context of the test
+	 * @throws Exception if job execution failed
+	 */
 	public void run(TestContext<String> context) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -64,12 +85,15 @@ public abstract class AbstractSourceJob extends FlinkJob {
 			default:
 				throw new IllegalStateException("Unrecognized stop pattern");
 		}
-		stream.addSink(new SimpleFileSink(outputFile.getAbsolutePath(), true));
+		stream.addSink(new SimpleFileSink(outputFile.getAbsolutePath(), false));
 		env.execute(context.jobName() + "-Source");
 	}
 
+	/**
+	 * A simple file sink for writing records into a file locally.
+	 */
 	static class SimpleFileSink extends RichSinkFunction<String> {
-		Logger LOG = LoggerFactory.getLogger(SimpleFileSink.class);
+		private static final Logger LOG = LoggerFactory.getLogger(SimpleFileSink.class);
 		String filePath;
 		File sinkFile;
 		BufferedWriter sinkBufferedWriter;

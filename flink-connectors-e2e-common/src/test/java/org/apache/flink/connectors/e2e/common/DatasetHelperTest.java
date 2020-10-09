@@ -18,8 +18,9 @@
 
 package org.apache.flink.connectors.e2e.common;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.flink.connectors.e2e.common.utils.DatasetHelper;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,6 +32,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 
+/**
+ * Unit test for {@link DatasetHelper}
+ */
 public class DatasetHelperTest {
 
 	@Rule

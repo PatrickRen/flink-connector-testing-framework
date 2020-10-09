@@ -18,9 +18,10 @@
 
 package org.apache.flink.connectors.e2e.common.utils;
 
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.flink.connectors.e2e.common.source.ControllableSource;
 import org.apache.flink.connectors.e2e.common.source.SourceControlRpc;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

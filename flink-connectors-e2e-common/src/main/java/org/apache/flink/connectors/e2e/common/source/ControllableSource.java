@@ -24,6 +24,7 @@ import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,18 +39,26 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * A Flink source that can be controlled by Java RMI.
+ *
+ * <p>This source is used for generating random records to downstream and recording records into a given local file.
+ * In order to control records to generate and lifecycle of the Flink job using this source, it integrates with
+ * an Java RMI server so that it could be controlled remotely through RPC (basically controlled by testing framework).
+ * </p>
+ */
 public class ControllableSource
 		extends AbstractRichFunction
 		implements SourceFunction<String>, CheckpointedFunction, SourceControlRpc {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ControllableSource.class);
 
+	/*---------------- Java RMI configurations ---------------*/
 	public static final String RMI_PROP_REGISTRY_FILTER = "sun.rmi.registry.registryFilter";
 	public static final String RMI_PROP_SERVER_HOSTNAME = "java.rmi.server.hostname";
 	public static final String RMI_REGISTRY_NAME = "SourceControl";
 	public static final String RMI_HOSTNAME = "127.0.0.1";
 	public static final int RMI_PORT = 15213;
-
 	private Registry rmiRegistry;
 
 	private volatile boolean isRunning = true;
@@ -62,11 +71,11 @@ public class ControllableSource
 
 	private AtomicInteger numElementsToEmit;
 
-	private final String END_MARK;
+	private final String endMark;
 
 	public ControllableSource(String recordingFilePath, String endMark) {
 		recordingFile = new File(recordingFilePath);
-		END_MARK = endMark;
+		this.endMark = endMark;
 	}
 
 	/*------------------- Checkpoint related---------------------*/
@@ -129,7 +138,7 @@ public class ControllableSource
 		}
 
 		// Emit end mark before exit
-		ctx.collect(END_MARK);
+		ctx.collect(endMark);
 	}
 
 	@Override

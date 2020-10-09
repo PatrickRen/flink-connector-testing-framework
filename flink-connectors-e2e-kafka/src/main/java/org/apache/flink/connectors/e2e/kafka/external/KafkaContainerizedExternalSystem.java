@@ -21,6 +21,7 @@ package org.apache.flink.connectors.e2e.kafka.external;
 import org.apache.flink.connectors.e2e.common.external.ContainerizedExternalSystem;
 import org.apache.flink.connectors.e2e.common.utils.FlinkContainers;
 import org.apache.flink.util.Preconditions;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
@@ -32,6 +33,11 @@ import java.util.Properties;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+/**
+ * Kafka external system based on {@link KafkaContainer} from <a href="https://www.testcontainers.org/">Testcontainers</a>.
+ *
+ * <p>This external system is also integrated with a Kafka admin client for topic management.</p>
+ */
 public class KafkaContainerizedExternalSystem extends ContainerizedExternalSystem<KafkaContainerizedExternalSystem> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(KafkaContainerizedExternalSystem.class);
@@ -67,9 +73,8 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 	 * @param topicName         Name of the new topic
 	 * @param numPartitions     Number of partitions
 	 * @param replicationFactor Number of replications
-	 * @throws Exception
 	 */
-	public void createTopic(String topicName, int numPartitions, short replicationFactor) throws Exception {
+	public void createTopic(String topicName, int numPartitions, short replicationFactor) {
 		// Make sure Kafka container is running
 		Preconditions.checkState(kafka.isRunning(), "Kafka container is not running");
 
@@ -77,8 +82,8 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 		try {
 			kafkaAdminClient.createTopics(Collections.singletonList(newTopic)).all().get();
 		} catch (Exception e) {
-			LOG.error("Cannot create topic \"{}\"", topicName);
-			throw new Exception(e);
+			LOG.error("Cannot create topic '{}'", topicName);
+			throw new RuntimeException("Cannot create topic '" + topicName + "'", e);
 		}
 	}
 
@@ -94,13 +99,13 @@ public class KafkaContainerizedExternalSystem extends ContainerizedExternalSyste
 	/*--------------------------- JUnit Lifecycle management ------------------------*/
 
 	/**
-	 * External system initialization. All preparation work should be done here because
-	 * testing framework is aware of nothing about the external system
+	 * External system initialization.
 	 *
-	 * @throws Throwable
+	 * <p>All preparation work should be done here because testing framework is aware of nothing
+	 * about the external system.</p>
 	 */
 	@Override
-	protected void before() throws Throwable {
+	protected void before() {
 		// Make sure kafka container is bound with Flink containers
 		checkNotNull(this.flink, "Kafka container is not bound with Flink containers." +
 				"This will lead to network isolation between Kafka and Flink");

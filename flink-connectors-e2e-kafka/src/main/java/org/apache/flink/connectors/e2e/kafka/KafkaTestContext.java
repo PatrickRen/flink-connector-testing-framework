@@ -30,7 +30,11 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
 
 import java.util.Properties;
 
+/**
+ * Context for Kafka tests.
+ */
 public class KafkaTestContext implements TestContext<String> {
+
 	@Override
 	public String jobName() {
 		return "KafkaConnectorTest";

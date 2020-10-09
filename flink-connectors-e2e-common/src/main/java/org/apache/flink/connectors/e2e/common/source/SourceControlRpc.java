@@ -18,15 +18,37 @@
 
 package org.apache.flink.connectors.e2e.common.source;
 
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+/**
+ * RPC interface for {@link ControllableSource}.
+ */
 public interface SourceControlRpc extends Remote {
+
+	/**
+	 * Stop emitting new records continuously.
+	 * @throws RemoteException if RPC call failed
+	 */
 	void pause() throws RemoteException;
 
+	/**
+	 * Emit one record and pause.
+	 * @throws RemoteException if RPC call failed
+	 */
 	void next() throws RemoteException;
 
+	/**
+	 * Continuously emit random records.
+	 * @throws RemoteException if RPC call failed
+	 */
 	void go() throws RemoteException;
 
+	/**
+	 * Let the source jump out of the {@link SourceFunction#run} function, which will finish the Flink job.
+	 * @throws RemoteException if RPC call failed
+	 */
 	void finish() throws RemoteException;
 }

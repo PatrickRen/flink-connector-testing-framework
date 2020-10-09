@@ -18,6 +18,9 @@
 
 package org.apache.flink.connectors.e2e.common.utils;
 
+/**
+ * Exception for successfully received the end mark in order to terminate the running job.
+ */
 public class SuccessException extends RuntimeException {
 	public SuccessException(String message) {
 		super(message);
