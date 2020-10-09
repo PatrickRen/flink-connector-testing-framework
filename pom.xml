@@ -41,6 +41,7 @@
         <scala.binary.version>2.11</scala.binary.version>
         <slf4j.version>1.7.15</slf4j.version>
         <log4j.version>2.13.2</log4j.version>
+        <testcontainers.version>1.15.0-rc2</testcontainers.version>
     </properties>
 
     <dependencies>
@@ -73,6 +74,12 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-1.2-api</artifactId>
             <version>${log4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${testcontainers.version}</version>
         </dependency>
     </dependencies>
 
